@@ -18,6 +18,10 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    // Force light theme on signup page
+    const root = document.documentElement;
+    root.classList.remove('dark');
+    
     // Do NOT automatically redirect if user is already logged in
     // This prevents redirect loops - user chose to visit signup page
     
@@ -31,7 +35,14 @@ const Signup = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      // Restore previous theme when leaving
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        root.classList.add('dark');
+      }
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

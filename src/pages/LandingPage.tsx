@@ -17,6 +17,18 @@ const LandingPage = () => {
     if (metaDescription) {
       metaDescription.setAttribute('content', 'Transform your learning with AI-powered study planning. Upload notes, create smart schedules, and achieve academic success with our intelligent study planner.');
     }
+
+    // Force light theme on landing page
+    const root = document.documentElement;
+    root.classList.remove('dark');
+    
+    // Cleanup: restore previous theme when leaving
+    return () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        root.classList.add('dark');
+      }
+    };
   }, []);
 
   return (

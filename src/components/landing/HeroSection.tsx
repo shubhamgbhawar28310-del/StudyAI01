@@ -53,15 +53,16 @@ const HeroSection = () => {
         <div className="mt-16 max-w-5xl mx-auto animate-slide-up" style={{ animationDelay: '0.8s' }}>
           <div className="relative">
             <div className="absolute inset-0 ai-gradient rounded-2xl opacity-20 blur-2xl transform scale-105"></div>
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-border overflow-hidden ai-glow-soft">
+            <div className="relative bg-gray-900 rounded-2xl shadow-2xl border border-border overflow-hidden ai-glow-soft">
               {/* Video Preview */}
-              <div className="aspect-video bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 relative overflow-hidden">
+              <div className="aspect-video relative overflow-hidden bg-black">
                 <video 
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   autoPlay
                   muted
                   loop
                   playsInline
+                  controls
                 >
                   <source src="/demo-video.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
