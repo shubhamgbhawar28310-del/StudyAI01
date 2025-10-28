@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Service Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        #result { margin-top: 20px; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>AI Service Test</h1>
+    <button id="testGemini25">Test Gemini 2.5 Flash</button>
+    <button id="testGeminiFlash">Test Gemini Flash Latest</button>
+    <button id="testGeminiPro">Test Gemini Pro Latest</button>
+    
+    <div id="result"></div>
+
+    <script type="module">
+        // Import the Google Generative AI library
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+        
+        const resultDiv = document.getElementById('result');
+        
+        // Function to test a specific model
+        async function testModel(modelName) {
+            resultDiv.innerHTML = `Testing ${modelName}...`;
+            resultDiv.className = '';
+            
+            try {
+                // Use the API key from the environment variable
+                const apiKey = 'AIzaSyABaiEo9-auIArdwzwvlYgVLeg-c5gIdVc'; // In a real app, this should come from backend
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                
+                const result = await model.generateContent("Hello, this is a test. Please respond with a short greeting.");
+                resultDiv.innerHTML = `✅ Success with ${modelName}:<br><pre>${result.response.text()}</pre>`;
+                resultDiv.className = 'success';
+                return true;
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error with ${modelName}:<br><pre>${error.message}</pre>`;
+                resultDiv.className = 'error';
+                return false;
+            }
+        }
+        
+        // Set up event listeners
+        document.getElementById('testGemini25').addEventListener('click', () => {
+            testModel('gemini-2.5-flash');
+        });
+        
+        document.getElementById('testGeminiFlash').addEventListener('click', () => {
+            testModel('gemini-flash-latest');
+        });
+        
+        document.getElementById('testGeminiPro').addEventListener('click', () => {
+            testModel('gemini-pro-latest');
+        });
+        
+        // Test gemini-2.5-flash by default when page loads
+        window.addEventListener('load', () => {
+            testModel('gemini-2.5-flash');
+        });
+    </script>
+</body>
+</html>
