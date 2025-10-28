@@ -2,6 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { BookOpen, Calendar } from 'lucide-react'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
+import ReactMarkdown from 'react-markdown'
 
 interface NoteItem {
   heading: string
@@ -64,8 +65,21 @@ export const NotesViewer: React.FC<NotesViewerProps> = ({ notes }) => {
             </Button>
           </div>
         </div>
-        <div className="prose dark:prose-invert max-w-none">
-          <div className="whitespace-pre-wrap">{notes as string}</div>
+        <div className="prose dark:prose-invert max-w-none prose-headings:font-semibold prose-p:leading-relaxed prose-ul:my-2 prose-ol:my-2">
+          <div className="max-h-[800px] overflow-y-auto">
+            <ReactMarkdown
+              components={{
+                pre: ({ node, ...props }) => (
+                  <pre className="overflow-x-auto max-w-full" {...props} />
+                ),
+                img: ({ node, ...props }) => (
+                  <img className="max-w-full h-auto" {...props} />
+                ),
+              }}
+            >
+              {notes as string}
+            </ReactMarkdown>
+          </div>
         </div>
       </div>
     )

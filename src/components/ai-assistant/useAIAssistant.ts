@@ -206,15 +206,30 @@ export const useAIAssistant = ({
         const history = currentChat?.messages || []
         
         const aiResponse = await generateAIResponse(finalContent, attachments, history)
+        console.log('=== AI Response Generated ===', aiResponse)
+        console.log('=== AI Response Content ===', aiResponse.content)
+        console.log('=== AI Response Content Type ===', aiResponse.content[0]?.type)
+        const contentValue = aiResponse.content[0]?.value
+        console.log('=== AI Response Content Value ===', typeof contentValue === 'string' ? contentValue.substring(0, 200) : contentValue)
+
+        // Validate the AI response before adding
+        if (!aiResponse || !aiResponse.content || aiResponse.content.length === 0) {
+          console.error('=== INVALID AI RESPONSE ===', aiResponse)
+          throw new Error('AI generated an invalid response')
+        }
 
         // Add AI response
         setChatSessions(prevSessions => {
           const finalSessions = prevSessions.map(session => {
             if (session.id === currentChatId) {
-              return { ...session, messages: [...session.messages, aiResponse] }
+              const updatedSession = { ...session, messages: [...session.messages, aiResponse] }
+              console.log('=== Updated Session Messages ===', updatedSession.messages.length, 'messages')
+              console.log('=== Last Message ===', updatedSession.messages[updatedSession.messages.length - 1])
+              return updatedSession
             }
             return session
           })
+          console.log('=== Final Sessions After Update ===', finalSessions.length, 'sessions')
           return finalSessions
         })
 

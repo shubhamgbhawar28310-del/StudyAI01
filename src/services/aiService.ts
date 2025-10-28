@@ -577,6 +577,12 @@ export const analyzeFiles = async (prompt: string, attachments: Attachment[]): P
       console.log("Attachment extractedText:", attachment.extractedText);
       console.log("Attachment has file object:", !!attachment.file);
       
+      // If we already have extracted text, don't re-upload
+      if (attachment.extractedText && !attachment.extractedText.includes('Error') && !attachment.extractedText.includes('Failed')) {
+        console.log("Already have extracted text, skipping upload");
+        return attachment;
+      }
+      
       // Always process supported document files, regardless of placeholder text
       const isProcessableFile = (
         attachment.type === 'application/pdf' || 
