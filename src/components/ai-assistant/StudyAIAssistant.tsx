@@ -126,25 +126,62 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
     setSidebarOpen: () => {} // Not needed since sidebar is always open
   });
 
-  // Load chat sessions from localStorage on component mount
+  // Load chat sessions on component mount
   useEffect(() => {
-    const savedSessions = localStorage.getItem('studyai-chat-sessions');
-    if (savedSessions) {
+    const loadSessions = async () => {
       try {
-        const parsedSessions = JSON.parse(savedSessions);
-        setChatSessions(parsedSessions);
+        const { getSessions } = await import('@/utils/storageManager');
+        const savedSessions = getSessions();
+        setChatSessions(savedSessions);
+        
+        // Set current chat to the most recent one if none selected
+        if (!currentChatId && savedSessions.length > 0) {
+          const mostRecent = savedSessions.reduce((latest, session) => 
+            (session.updatedAt > (latest?.updatedAt || 0) ? session : latest), 
+            savedSessions[0]
+          );
+          setCurrentChatId(mostRecent.id);
+        }
       } catch (error) {
         console.error('Error loading chat sessions:', error);
       }
-    }
+    };
+    
+    loadSessions();
   }, []);
 
-  // Save chat sessions to localStorage whenever they change
+  // Save chat sessions whenever they change
   useEffect(() => {
-    if (chatSessions.length > 0) {
-      localStorage.setItem('studyai-chat-sessions', JSON.stringify(chatSessions));
-    }
-  }, [chatSessions]);
+    if (chatSessions.length === 0) return;
+    
+    const saveSessions = async () => {
+      try {
+        const { saveSessions: saveSessionsToStorage } = await import('@/utils/storageManager');
+        const updatedSessions = saveSessionsToStorage(chatSessions);
+        
+        // Check if sessions were modified during save (e.g., due to cleanup)
+        if (updatedSessions.length !== chatSessions.length) {
+          setChatSessions(updatedSessions);
+          
+          // If current chat was removed, select the most recent one
+          if (!updatedSessions.some(s => s.id === currentChatId)) {
+            setCurrentChatId(updatedSessions[0]?.id || null);
+          }
+        }
+        
+        // Check storage usage and show warning if needed
+        const { warning } = await import('@/utils/storageManager').then(m => m.getStorageInfo());
+        if (warning) {
+          console.warn('Warning: Chat storage is nearly full. Some older messages may be removed.');
+          // You can show a toast notification here if you have a notification system
+        }
+      } catch (error) {
+        console.error('Error saving chat sessions:', error);
+      }
+    };
+    
+    saveSessions();
+  }, [chatSessions, currentChatId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

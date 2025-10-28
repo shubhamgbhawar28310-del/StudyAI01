@@ -311,11 +311,19 @@ export const useAIAssistant = ({
     }
   }
 
-  const handleDeleteAllChats = () => {
+  const handleDeleteAllChats = async () => {
     if (window.confirm('Are you sure you want to delete all chat conversations? This action cannot be undone.')) {
-      setChatSessions([])
-      setCurrentChatId(null)
-      localStorage.removeItem('studyai-chat-sessions')
+      try {
+        const { saveSessions } = await import('@/utils/storageManager');
+        saveSessions([]);
+        setChatSessions([]);
+        setCurrentChatId(null);
+      } catch (error) {
+        console.error('Error deleting all chats:', error);
+        // Fallback to local state update if storage fails
+        setChatSessions([]);
+        setCurrentChatId(null);
+      }
     }
   }
 
