@@ -2,7 +2,6 @@ import os
 import re
 import chardet
 import traceback
-import fitz  # PyMuPDF
 import pdfplumber
 import PyPDF2
 import docx
@@ -42,26 +41,18 @@ class DocumentService:
     def extract_pdf_text(self, file_path):
         """
         Extract text from PDF file using multiple methods:
-        1. PyMuPDF (fitz) - most reliable for various PDF types
-        2. pdfplumber - for better layout preservation
-        3. PyPDF2 - fallback method
+        1. pdfplumber - for better layout preservation
+        2. PyPDF2 - fallback method
         """
         try:
-            # Try PyMuPDF first (most reliable)
-            text = self._extract_with_pymupdf(file_path)
-            if text and len(text.strip()) > 50:  # If we got meaningful text
-                print(f"Successfully extracted text with PyMuPDF: {len(text)} characters")
-                cleaned_text = self._clean_text(text)
-                return self._improve_text_formatting(cleaned_text)
-            
-            # Try pdfplumber for better layout (slower but more accurate)
+            # Try pdfplumber first (better layout preservation)
             text = self._extract_with_pdfplumber(file_path)
             if text and len(text.strip()) > 50:  # If we got meaningful text
                 print(f"Successfully extracted text with pdfplumber: {len(text)} characters")
                 cleaned_text = self._clean_text(text)
                 return self._improve_text_formatting(cleaned_text)
             
-            # Try PyPDF2 (faster but less accurate)
+            # Try PyPDF2 (faster fallback)
             text = self._extract_with_pypdf2(file_path)
             if text and len(text.strip()) > 50:  # If we got meaningful text
                 print(f"Successfully extracted text with PyPDF2: {len(text)} characters")
@@ -80,34 +71,6 @@ class DocumentService:
             print(f"PDF extraction error: {str(e)}")
             traceback.print_exc()
             raise Exception(f"Failed to parse PDF: {str(e)}")
-    
-    def _extract_with_pymupdf(self, file_path):
-        """Extract text using PyMuPDF (fitz) - most reliable method"""
-        try:
-            text = ""
-            doc = fitz.open(file_path)
-            
-            # Get total pages for progress tracking
-            total_pages = len(doc)
-            print(f"Processing PDF with PyMuPDF: {total_pages} pages")
-            
-            # Process all pages (limit to 100 for very large documents)
-            pages_to_process = min(total_pages, self.max_pdf_pages)
-            for page_num in range(pages_to_process):
-                try:
-                    page = doc.load_page(page_num)
-                    page_text = page.get_text()
-                    if page_text:
-                        text += f"\n\n--- Page {page_num + 1} ---\n{page_text}"
-                except Exception as page_error:
-                    print(f"Error extracting page {page_num + 1} with PyMuPDF: {str(page_error)}")
-                    text += f"\n\n--- Page {page_num + 1} ---\n[Error extracting text from this page]"
-            
-            doc.close()
-            return text
-        except Exception as e:
-            print(f"PyMuPDF extraction failed: {str(e)}")
-            return ""
     
     def _extract_with_pdfplumber(self, file_path):
         """Extract text using pdfplumber for better layout preservation"""

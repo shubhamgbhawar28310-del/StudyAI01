@@ -7,14 +7,7 @@ from flask_cors import CORS
 from src.services.document_service import DocumentService
 
 app = Flask(__name__)
-# Allow CORS from your Vercel frontend
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["*"],  # Will be restricted in production
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+CORS(app)
 
 # Initialize document service
 document_service = DocumentService()
