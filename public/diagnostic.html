@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyAI - Database Diagnostic</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .warning {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .status.success { background: #4CAF50; color: white; }
+        .status.error { background: #f44336; color: white; }
+        .status.warning { background: #ff9800; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 StudyAI Database Diagnostic</h1>
+        <p class="subtitle">This tool checks if your Supabase database is set up correctly</p>
+        
+        <button onclick="runDiagnostic()">Run Diagnostic Test</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://crdqpioymuvnzhtgrenj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyZHFwaW95bXV2bnpodGdyZW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4Mzc2NjQsImV4cCI6MjA3MzQxMzY2NH0.rv55zUVAkCCsZG0gzvOGHL3R8KzHpymaORrx56OnEC0';
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function addResult(message, type = 'result') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function runDiagnostic() {
+            document.getElementById('results').innerHTML = '';
+            
+            addResult('🚀 Starting diagnostic tests...\n', 'success');
+
+            // Test 1: Connection
+            addResult('Test 1: Checking Supabase connection...');
+            try {
+                const { data, error } = await supabaseClient.from('_test_').select('*').limit(1);
+                if (error && error.message.includes('relation "_test_" does not exist')) {
+                    addResult('✅ Connection successful!', 'success');
+                } else if (error) {
+                    addResult(`⚠️ Connection warning: ${error.message}`, 'warning');
+                } else {
+                    addResult('✅ Connection successful!', 'success');
+                }
+            } catch (err) {
+                addResult(`❌ Connection failed: ${err.message}`, 'error');
+                return;
+            }
+
+            // Test 2: Check authentication
+            addResult('\nTest 2: Checking authentication status...');
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                addResult(`✅ User logged in: ${session.user.email}`, 'success');
+            } else {
+                addResult('⚠️ No user logged in. Please login first!', 'warning');
+                addResult('→ Go to /login to sign in', 'warning');
+            }
+
+            // Test 3: Check tables
+            addResult('\nTest 3: Checking if database tables exist...');
+            const tables = [
+                'tasks',
+                'materials', 
+                'flashcards',
+                'flashcard_decks',
+                'pomodoro_sessions',
+                'schedule_events',
+                'user_stats'
+            ];
+
+            let allTablesExist = true;
+            for (const table of tables) {
+                const { data, error } = await supabaseClient.from(table).select('count').limit(1);
+                if (error) {
+                    addResult(`❌ Table "${table}" does not exist or has issues: ${error.message}`, 'error');
+                    allTablesExist = false;
+                } else {
+                    addResult(`✅ Table "${table}" exists`, 'success');
+                }
+            }
+
+            if (!allTablesExist) {
+                addResult('\n⚠️ MIGRATION REQUIRED!', 'error');
+                addResult('Some tables are missing. You need to run the database migrations:', 'error');
+                addResult('1. Go to https://app.supabase.com', 'warning');
+                addResult('2. Open SQL Editor', 'warning');
+                addResult('3. Run: supabase/migrations/create_user_data_tables.sql', 'warning');
+                addResult('4. See setup-database.md for detailed instructions', 'warning');
+                return;
+            }
+
+            // Test 4: Test insert (if logged in)
+            if (session) {
+                addResult('\nTest 4: Testing data insert...');
+                const testTask = {
+                    user_id: session.user.id,
+                    title: 'Diagnostic Test Task',
+                    completed: false,
+                    priority: 'low',
+                    progress: 0,
+                    pomodoro_sessions: 0,
+                    flashcards_generated: false
+                };
+
+                const { data, error } = await supabaseClient.from('tasks').insert(testTask).select();
+                if (error) {
+                    addResult(`❌ Insert failed: ${error.message}`, 'error');
+                    addResult('This might be a Row Level Security (RLS) policy issue', 'warning');
+                } else {
+                    addResult('✅ Insert successful!', 'success');
+                    
+                    // Clean up
+                    if (data && data[0]) {
+                        await supabaseClient.from('tasks').delete().eq('id', data[0].id);
+                        addResult('✅ Test record cleaned up', 'success');
+                    }
+                }
+            }
+
+            // Final summary
+            addResult('\n' + '='.repeat(50), 'success');
+            if (allTablesExist && session) {
+                addResult('🎉 ALL TESTS PASSED!', 'success');
+                addResult('Your database is set up correctly and ready to use.', 'success');
+            } else if (allTablesExist && !session) {
+                addResult('⚠️ Database OK, but you need to login', 'warning');
+                addResult('Go to /login to sign in and start using the app', 'warning');
+            } else {
+                addResult('❌ SETUP REQUIRED', 'error');
+                addResult('Please run the database migrations first', 'error');
+                addResult('See setup-database.md for instructions', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
