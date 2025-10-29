@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { TaskModal } from '@/components/modals/TaskModal'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
+import { storageService } from '@/services/storageService'
 import { 
   CheckSquare, 
   Plus, 
@@ -118,76 +119,133 @@ export function TaskManager({
     }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     if (files.length === 0) return
 
     setIsAnalyzing(true)
     
-    files.forEach(file => {
-      // Add the file as a material
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const content = e.target?.result as string
-        
-        addMaterial({
-          title: file.name,
-          description: `Uploaded file for AI analysis`,
-          type: file.type.includes('image') ? 'image' : 
-                file.type.includes('pdf') ? 'pdf' : 
-                'document',
-          fileName: file.name,
-          fileSize: file.size,
-          content: file.type.includes('image') ? '' : content,
-          tags: ['ai-uploaded']
-        })
-      }
-      
-      if (file.type.includes('image')) {
-        reader.readAsDataURL(file)
-      } else {
-        reader.readAsText(file)
-      }
-    })
+    try {
+      // Upload files to Supabase Storage and add as materials
+      for (const file of files) {
+        try {
+          // Upload to Supabase Storage
+          const uploadResult = await storageService.uploadFile(file, 'tasks')
+          
+          if (uploadResult.error || !uploadResult.path) {
+            console.error(`Failed to upload ${file.name}:`, uploadResult.error)
+            continue
+          }
 
-    // Simulate AI analysis
-    setTimeout(() => {
+          // Get file type
+          const fileType = storageService.getFileType(file.name)
+          
+          // Add material with file path (no content stored in DB)
+          addMaterial({
+            title: file.name,
+            description: `Uploaded file for AI analysis`,
+            type: fileType,
+            fileName: file.name,
+            fileSize: file.size,
+            content: '', // No content - using Supabase Storage
+            filePath: uploadResult.path, // Store file path instead
+            tags: ['ai-uploaded']
+          })
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error)
+        }
+      }
+
+      // Simulate AI analysis
+      setTimeout(() => {
+        setIsAnalyzing(false)
+        alert(`🤖 AI Analysis Complete!\n\nI've analyzed your ${files.length} file(s) and added them to your materials. Check the AI Assistant tab for detailed suggestions including:\n\n• Suggested study tasks\n• Generated flashcards\n• Recommended schedule\n• Content summaries\n\nClick on "AI Assistant 🤖" in the sidebar to review and accept the suggestions!`)
+      }, 1000)
+    } catch (error) {
+      console.error('Error uploading files:', error)
       setIsAnalyzing(false)
-      alert(`🤖 AI Analysis Complete!\n\nI've analyzed your ${files.length} file(s) and added them to your materials. Check the AI Assistant tab for detailed suggestions including:\n\n• Suggested study tasks\n• Generated flashcards\n• Recommended schedule\n• Content summaries\n\nClick on "AI Assistant 🤖" in the sidebar to review and accept the suggestions!`)
-    }, 3000)
-  }
-
-  const handleViewMaterial = (materialId: string) => {
-    const material = state.materials.find(m => m.id === materialId)
-    if (material && material.content) {
-      const newWindow = window.open('', '_blank')
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head><title>${material.title}</title></head>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-              <h1>${material.title}</h1>
-              <pre style="white-space: pre-wrap;">${material.content}</pre>
-            </body>
-          </html>
-        `)
-        newWindow.document.close()
-      }
+      alert('Error uploading files. Please try again.')
     }
   }
 
-  const handleDownloadMaterial = (materialId: string) => {
+  const handleViewMaterial = async (materialId: string) => {
     const material = state.materials.find(m => m.id === materialId)
-    if (material && material.content) {
-      const blob = new Blob([material.content], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = material.fileName || `${material.title}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+    if (!material) return
+
+    try {
+      // Check if material has file_path (new Supabase Storage method)
+      if (material.filePath) {
+        const signedUrl = await storageService.getSignedUrl(material.filePath)
+        
+        if (signedUrl) {
+          // Open file in new tab using signed URL
+          window.open(signedUrl, '_blank')
+        } else {
+          alert('Unable to generate preview URL. Please try downloading the file.')
+        }
+      } 
+      // Fallback for old content-based materials
+      else if (material.content) {
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(`
+            <html>
+              <head><title>${material.title}</title></head>
+              <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h1>${material.title}</h1>
+                <pre style="white-space: pre-wrap;">${material.content}</pre>
+              </body>
+            </html>
+          `)
+          newWindow.document.close()
+        }
+      } else {
+        alert('No content available for this material.')
+      }
+    } catch (error) {
+      console.error('Error viewing material:', error)
+      alert('Error opening file. Please try again.')
+    }
+  }
+
+  const handleDownloadMaterial = async (materialId: string) => {
+    const material = state.materials.find(m => m.id === materialId)
+    if (!material) return
+
+    try {
+      // Check if material has file_path (new Supabase Storage method)
+      if (material.filePath) {
+        const signedUrl = await storageService.getSignedUrl(material.filePath)
+        
+        if (signedUrl) {
+          // Create download link with signed URL
+          const a = document.createElement('a')
+          a.href = signedUrl
+          a.download = material.fileName || material.title
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+        } else {
+          alert('Unable to generate download URL. Please try again.')
+        }
+      }
+      // Fallback for old content-based materials
+      else if (material.content) {
+        const blob = new Blob([material.content], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = material.fileName || `${material.title}.txt`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        alert('No content available for this material.')
+      }
+    } catch (error) {
+      console.error('Error downloading material:', error)
+      alert('Error downloading file. Please try again.')
     }
   }
 
@@ -252,7 +310,7 @@ export function TaskManager({
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.ppt,.pptx"
+        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.ppt,.pptx,.xls,.xlsx,.zip,.rar"
         onChange={handleFileUpload}
         className="hidden"
       />
@@ -446,7 +504,7 @@ export function TaskManager({
                                   <span>{getTypeIcon(material.type)}</span>
                                   <span className="truncate max-w-[100px]">{material.title}</span>
                                   <div className="flex gap-1">
-                                    {material.content && (
+                                    {(material.content || material.filePath) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -457,7 +515,7 @@ export function TaskManager({
                                         <Eye className="h-2 w-2" />
                                       </Button>
                                     )}
-                                    {material.content && (
+                                    {(material.content || material.filePath) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"

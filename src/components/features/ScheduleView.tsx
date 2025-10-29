@@ -352,7 +352,7 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                         {dayEvents.map(event => (
                           <div
                             key={event.id}
-                            className={`text-xs p-1 rounded mb-1 text-white ${getEventColor(event.type)} cursor-pointer hover:opacity-80`}
+                            className={`relative text-xs p-1 rounded mb-1 text-white ${getEventColor(event.type)} cursor-pointer hover:opacity-80 group`}
                             onClick={(e) => {
                               e.stopPropagation()
                               handleEditEvent(event.id)
@@ -360,6 +360,17 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                           >
                             <p className="font-medium truncate">{event.title}</p>
                             <p className="opacity-90">{formatTime(event.startTime)}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteScheduleEvent(event.id)
+                              }}
+                              className="absolute top-0 right-0 h-4 w-4 p-0 text-white hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                         ))}
                       </div>

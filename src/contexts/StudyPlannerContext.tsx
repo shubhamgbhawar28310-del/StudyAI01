@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import { useAuth } from './AuthContext'
 import { dataSyncService } from '@/services/dataSyncService'
+import { safeStorage } from '@/utils/safeStorage'
 
 // Types
 export interface Task {
@@ -85,6 +86,7 @@ export interface Material {
   content?: string
   fileName?: string
   fileSize?: number
+  filePath?: string // Path to file in Supabase Storage
   tags?: string[]
   taskIds?: string[] // Tasks this material is attached to
   createdAt: string
@@ -524,22 +526,17 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'LOAD_DATA', payload: userData })
     } catch (error) {
       console.error('Failed to load user data:', error)
-      // Fallback to localStorage if Supabase fails
-      const savedData = localStorage.getItem('studyPlannerData')
+      // Fallback to safeStorage if Supabase fails
+      const savedData = await safeStorage.getItem('studyPlannerData')
       if (savedData) {
-        try {
-          const parsedData = JSON.parse(savedData)
-          dispatch({ type: 'LOAD_DATA', payload: parsedData })
-        } catch (e) {
-          console.error('Failed to load saved data:', e)
-        }
+        dispatch({ type: 'LOAD_DATA', payload: savedData })
       }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false })
     }
   }
 
-  // Save data to localStorage as backup whenever state changes
+  // Save data to safeStorage as backup whenever state changes
   useEffect(() => {
     if (user) {
       const dataToSave = {
@@ -552,7 +549,7 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
         userStats: state.userStats,
         settings: state.settings
       }
-      localStorage.setItem('studyPlannerData', JSON.stringify(dataToSave))
+      safeStorage.setItem('studyPlannerData', dataToSave).catch(console.error)
     }
   }, [user, state.tasks, state.flashcards, state.flashcardDecks, state.pomodoroSessions, state.scheduleEvents, state.materials, state.userStats, state.settings])
 
