@@ -22,6 +22,8 @@ export interface Task {
   pomodoroSessions: number
   flashcardsGenerated: boolean
   materialIds?: string[] // Materials attached to this task
+  notes?: string // NEW: Editable notes attached to the task
+  status?: 'pending' | 'in_progress' | 'completed' | 'missed' // NEW: Task status for workflow
 }
 
 export interface Flashcard {
@@ -75,6 +77,10 @@ export interface ScheduleEvent {
   type: 'task' | 'study' | 'break' | 'other'
   taskId?: string
   color?: string
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'missed' // NEW: Event status tracking
+  missedCount?: number // NEW: Number of times marked missed
+  startedAt?: string // NEW: When user actually started
+  completedAt?: string // NEW: When marked complete
 }
 
 export interface Material {
@@ -89,6 +95,24 @@ export interface Material {
   filePath?: string // Path to file in Supabase Storage
   tags?: string[]
   taskIds?: string[] // Tasks this material is attached to
+  createdAt: string
+  updatedAt: string
+}
+export interface SessionNote {
+  id: string
+  studyEventId: string
+  userId: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+export interface Reminder {
+  id: string
+  userId: string
+  studyEventId: string
+  scheduledTime: string
+  reminderType: 'session_start' | 'before_10min' | 'before_30min' | 'daily_digest'
+  sentAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -117,12 +141,15 @@ export interface AppSettings {
     pomodoroLength: number
     breakLength: number
     autoStartBreaks: boolean
+    autoAdvanceEnabled?: boolean // NEW: Enable auto-start of next session
   }
   notifications: {
     studyReminders: boolean
     taskDeadlines: boolean
     achievements: boolean
     weeklyReport: boolean
+    notificationsEnabled?: boolean // NEW: Enable browser notifications
+    notificationSound?: boolean // NEW: Play sound with notifications
   }
 }
 
@@ -137,6 +164,13 @@ interface StudyPlannerState {
   settings: AppSettings
   currentPomodoroTask?: Task
   isLoading: boolean
+  sessionNotes: SessionNote[] // NEW: Notes from study sessions
+  reminders: Reminder[] // NEW: Scheduled reminders
+  focusMode: {
+    isOpen: boolean
+    studyEventId?: string
+    taskId?: string
+  }
 }
 
 type StudyPlannerAction =
@@ -165,6 +199,14 @@ type StudyPlannerAction =
   | { type: 'UPDATE_USER_STATS'; payload: Partial<UserStats> }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
   | { type: 'LOAD_DATA'; payload: Partial<StudyPlannerState> }
+  | { type: 'ADD_SESSION_NOTE'; payload: SessionNote }
+  | { type: 'UPDATE_SESSION_NOTE'; payload: SessionNote }
+  | { type: 'DELETE_SESSION_NOTE'; payload: string }
+  | { type: 'ADD_REMINDER'; payload: Reminder }
+  | { type: 'UPDATE_REMINDER'; payload: Reminder }
+  | { type: 'DELETE_REMINDER'; payload: string }
+  | { type: 'OPEN_FOCUS_MODE'; payload: { studyEventId: string; taskId?: string } }
+  | { type: 'CLOSE_FOCUS_MODE' }
 
 const initialState: StudyPlannerState = {
   tasks: [],
@@ -195,16 +237,24 @@ const initialState: StudyPlannerState = {
       dailyGoal: 4,
       pomodoroLength: 25,
       breakLength: 5,
-      autoStartBreaks: true
+      autoStartBreaks: true,
+      autoAdvanceEnabled: true
     },
     notifications: {
       studyReminders: true,
       taskDeadlines: true,
       achievements: true,
-      weeklyReport: false
+      weeklyReport: false,
+      notificationsEnabled: false,
+      notificationSound: true
     }
   },
-  isLoading: false
+  isLoading: false,
+  sessionNotes: [],
+  reminders: [],
+  focusMode: {
+    isOpen: false
+  }
 }
 
 function studyPlannerReducer(state: StudyPlannerState, action: StudyPlannerAction): StudyPlannerState {
@@ -447,6 +497,57 @@ function studyPlannerReducer(state: StudyPlannerState, action: StudyPlannerActio
     case 'LOAD_DATA':
       return { ...state, ...action.payload }
 
+    case 'ADD_SESSION_NOTE':
+      return {
+        ...state,
+        sessionNotes: [action.payload, ...state.sessionNotes]
+      }
+    case 'UPDATE_SESSION_NOTE':
+      return {
+        ...state,
+        sessionNotes: state.sessionNotes.map(note =>
+          note.id === action.payload.id ? action.payload : note
+        )
+      }
+    case 'DELETE_SESSION_NOTE':
+      return {
+        ...state,
+        sessionNotes: state.sessionNotes.filter(note => note.id !== action.payload)
+      }
+    case 'ADD_REMINDER':
+      return {
+        ...state,
+        reminders: [action.payload, ...state.reminders]
+      }
+    case 'UPDATE_REMINDER':
+      return {
+        ...state,
+        reminders: state.reminders.map(reminder =>
+          reminder.id === action.payload.id ? action.payload : reminder
+        )
+      }
+    case 'DELETE_REMINDER':
+      return {
+        ...state,
+        reminders: state.reminders.filter(reminder => reminder.id !== action.payload)
+      }
+    case 'OPEN_FOCUS_MODE':
+      return {
+        ...state,
+        focusMode: {
+          isOpen: true,
+          studyEventId: action.payload.studyEventId,
+          taskId: action.payload.taskId
+        }
+      }
+    case 'CLOSE_FOCUS_MODE':
+      return {
+        ...state,
+        focusMode: {
+          isOpen: false
+        }
+      }
+
     default:
       return state
   }
@@ -486,6 +587,24 @@ interface StudyPlannerContextType {
   deleteMaterial: (id: string) => void
   attachMaterialToTask: (materialId: string, taskId: string) => void
   detachMaterialFromTask: (materialId: string, taskId: string) => void
+    // Session Note operations
+  createSessionNote: (studyEventId: string, content: string) => void
+  updateSessionNote: (noteId: string, content: string) => void
+  deleteSessionNote: (noteId: string) => void
+  getSessionNotesByEvent: (studyEventId: string) => SessionNote[]
+  // Reminder operations
+  createReminder: (reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateReminder: (reminder: Reminder) => void
+  deleteReminder: (reminderId: string) => void
+  getRemindersByEvent: (studyEventId: string) => Reminder[]
+  // Study Event operations
+  startEvent: (studyEventId: string) => void
+  markEventComplete: (studyEventId: string) => void
+  markEventMissed: (studyEventId: string) => void
+  skipToNextEvent: (currentEventId: string) => void
+  // Focus Mode operations
+  openFocusMode: (studyEventId: string, taskId?: string) => void
+  closeFocusMode: () => void
   // Settings operations
   updateSettings: (settings: Partial<AppSettings>) => void
   // Utility functions
@@ -559,6 +678,70 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
       dataSyncService.syncUserStats(state.userStats, user.id).catch(console.error)
     }
   }, [user, state.userStats, state.isLoading])
+
+    // Auto-advance logic - check for missed events every 60 seconds
+  useEffect(() => {
+    if (!state.settings.studyPreferences.autoAdvanceEnabled) return
+    const checkInterval = setInterval(() => {
+      const now = new Date()
+      state.scheduleEvents.forEach((event) => {
+        if (event.status === 'in_progress' && event.endTime && !event.completedAt) {
+          const endTime = new Date(event.endTime)
+          // If event has passed without completion, mark as missed
+          if (endTime < now) {
+            const updatedEvent: ScheduleEvent = {
+              ...event,
+              status: 'missed',
+              missedCount: (event.missedCount || 0) + 1
+            }
+            dispatch({ type: 'UPDATE_SCHEDULE_EVENT', payload: updatedEvent })
+            // Update linked task if exists
+            if (event.taskId) {
+              const task = state.tasks.find((t) => t.id === event.taskId)
+              if (task) {
+                const updatedTask = { ...task, status: 'missed' as const, updatedAt: new Date().toISOString() }
+                dispatch({ type: 'UPDATE_TASK', payload: updatedTask })
+              }
+            }
+            // Sync to Supabase
+            if (user) {
+              dataSyncService.syncScheduleEvent(updatedEvent, user.id, 'update').catch(console.error)
+            }
+            // Find next scheduled event and auto-start if enabled
+            const nextEvent = state.scheduleEvents.find(
+              (e) => e.status === 'scheduled' && new Date(e.startTime) > new Date(event.endTime)
+            )
+            if (nextEvent) {
+              const autoStartEvent: ScheduleEvent = {
+                ...nextEvent,
+                status: 'in_progress',
+                startedAt: new Date().toISOString()
+              }
+              dispatch({ type: 'UPDATE_SCHEDULE_EVENT', payload: autoStartEvent })
+              // Update linked task
+              if (nextEvent.taskId) {
+                const nextTask = state.tasks.find((t) => t.id === nextEvent.taskId)
+                if (nextTask) {
+                  const updatedNextTask = { ...nextTask, status: 'in_progress' as const, updatedAt: new Date().toISOString() }
+                  dispatch({ type: 'UPDATE_TASK', payload: updatedNextTask })
+                }
+              }
+              // Open Focus Mode for auto-started event
+              dispatch({
+                type: 'OPEN_FOCUS_MODE',
+                payload: { studyEventId: nextEvent.id, taskId: nextEvent.taskId }
+              })
+              // Sync to Supabase
+              if (user) {
+                dataSyncService.syncScheduleEvent(autoStartEvent, user.id, 'update').catch(console.error)
+              }
+            }
+          }
+        }
+      })
+    }, 60000) // Check every 60 seconds
+    return () => clearInterval(checkInterval)
+  }, [state.settings.studyPreferences.autoAdvanceEnabled, state.scheduleEvents, state.tasks, user])
 
   // Task operations
   const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'pomodoroSessions' | 'flashcardsGenerated'>) => {
@@ -874,6 +1057,167 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
   const updateSettings = (settings: Partial<AppSettings>) => {
     dispatch({ type: 'UPDATE_SETTINGS', payload: settings })
   }
+    // Session Note operations
+  const createSessionNote = (studyEventId: string, content: string) => {
+    const note: SessionNote = {
+      id: crypto.randomUUID(),
+      studyEventId,
+      userId: user?.id || '',
+      content,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'ADD_SESSION_NOTE', payload: note })
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncSessionNote(note, user.id, 'insert').catch(console.error)
+    }
+  }
+  const updateSessionNote = (noteId: string, content: string) => {
+    const note = state.sessionNotes.find(n => n.id === noteId)
+    if (!note) return
+    const updatedNote: SessionNote = {
+      ...note,
+      content,
+      updatedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'UPDATE_SESSION_NOTE', payload: updatedNote })
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncSessionNote(updatedNote, user.id, 'update').catch(console.error)
+    }
+  }
+  const deleteSessionNote = (noteId: string) => {
+    const note = state.sessionNotes.find(n => n.id === noteId)
+    dispatch({ type: 'DELETE_SESSION_NOTE', payload: noteId })
+    // Sync to Supabase
+    if (user && note) {
+      dataSyncService.syncSessionNote(note, user.id, 'delete').catch(console.error)
+    }
+  }
+  const getSessionNotesByEvent = (studyEventId: string) =>
+    state.sessionNotes.filter(note => note.studyEventId === studyEventId)
+  // Reminder operations
+  const createReminder = (reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newReminder: Reminder = {
+      ...reminder,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'ADD_REMINDER', payload: newReminder })
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncReminder(newReminder, user.id, 'insert').catch(console.error)
+    }
+  }
+  const updateReminder = (reminder: Reminder) => {
+    const updatedReminder = {
+      ...reminder,
+      updatedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'UPDATE_REMINDER', payload: updatedReminder })
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncReminder(updatedReminder, user.id, 'update').catch(console.error)
+    }
+  }
+  const deleteReminder = (reminderId: string) => {
+    const reminder = state.reminders.find(r => r.id === reminderId)
+    dispatch({ type: 'DELETE_REMINDER', payload: reminderId })
+    // Sync to Supabase
+    if (user && reminder) {
+      dataSyncService.syncReminder(reminder, user.id, 'delete').catch(console.error)
+    }
+  }
+  const getRemindersByEvent = (studyEventId: string) =>
+    state.reminders.filter(reminder => reminder.studyEventId === studyEventId)
+  // Study Event operations
+  const startEvent = (studyEventId: string) => {
+    const event = state.scheduleEvents.find(e => e.id === studyEventId)
+    if (!event) return
+    const updatedEvent: ScheduleEvent = {
+      ...event,
+      status: 'in_progress',
+      startedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'UPDATE_SCHEDULE_EVENT', payload: updatedEvent })
+    // Also update linked task status if exists
+    if (event.taskId) {
+      const task = state.tasks.find(t => t.id === event.taskId)
+      if (task) {
+        updateTask({ ...task, status: 'in_progress' })
+      }
+    }
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncScheduleEvent(updatedEvent, user.id, 'update').catch(console.error)
+    }
+  }
+  const markEventComplete = (studyEventId: string) => {
+    const event = state.scheduleEvents.find(e => e.id === studyEventId)
+    if (!event) return
+    const updatedEvent: ScheduleEvent = {
+      ...event,
+      status: 'completed',
+      completedAt: new Date().toISOString()
+    }
+    dispatch({ type: 'UPDATE_SCHEDULE_EVENT', payload: updatedEvent })
+    // Also update linked task status if exists
+    if (event.taskId) {
+      const task = state.tasks.find(t => t.id === event.taskId)
+      if (task) {
+        updateTask({ ...task, status: 'completed', completed: true })
+      }
+    }
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncScheduleEvent(updatedEvent, user.id, 'update').catch(console.error)
+    }
+  }
+  const markEventMissed = (studyEventId: string) => {
+    const event = state.scheduleEvents.find(e => e.id === studyEventId)
+    if (!event) return
+    const updatedEvent: ScheduleEvent = {
+      ...event,
+      status: 'missed',
+      missedCount: (event.missedCount || 0) + 1
+    }
+    dispatch({ type: 'UPDATE_SCHEDULE_EVENT', payload: updatedEvent })
+    // Also update linked task status if exists
+    if (event.taskId) {
+      const task = state.tasks.find(t => t.id === event.taskId)
+      if (task) {
+        updateTask({ ...task, status: 'missed' })
+      }
+    }
+    // Sync to Supabase
+    if (user) {
+      dataSyncService.syncScheduleEvent(updatedEvent, user.id, 'update').catch(console.error)
+    }
+  }
+  const skipToNextEvent = (currentEventId: string) => {
+    // Mark current event as missed
+    markEventMissed(currentEventId)
+    // Find next scheduled event
+    const currentEvent = state.scheduleEvents.find(e => e.id === currentEventId)
+    if (!currentEvent) return
+    const nextEvent = state.scheduleEvents.find(e =>
+      e.status === 'scheduled' &&
+      new Date(e.startTime) > new Date(currentEvent.endTime)
+    )
+    if (nextEvent && state.settings.studyPreferences.autoAdvanceEnabled) {
+      startEvent(nextEvent.id)
+      openFocusMode(nextEvent.id, nextEvent.taskId)
+    }
+  }
+  // Focus Mode operations
+  const openFocusMode = (studyEventId: string, taskId?: string) => {
+    dispatch({ type: 'OPEN_FOCUS_MODE', payload: { studyEventId, taskId } })
+  }
+  const closeFocusMode = () => {
+    dispatch({ type: 'CLOSE_FOCUS_MODE' })
+  }
 
   // Utility functions
   const getTaskById = (id: string) => state.tasks.find(task => task.id === id)
@@ -909,6 +1253,20 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
     deleteMaterial,
     attachMaterialToTask,
     detachMaterialFromTask,
+    createSessionNote,
+    updateSessionNote,
+    deleteSessionNote,
+    getSessionNotesByEvent,
+    createReminder,
+    updateReminder,
+    deleteReminder,
+    getRemindersByEvent,
+    startEvent,
+    markEventComplete,
+    markEventMissed,
+    skipToNextEvent,
+    openFocusMode,
+    closeFocusMode,
     updateSettings,
     getTaskById,
     getFlashcardsByTask,

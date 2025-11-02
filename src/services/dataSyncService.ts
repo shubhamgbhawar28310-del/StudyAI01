@@ -1,12 +1,14 @@
 import { supabase } from '@/lib/supabase';
-import type { 
-  Task, 
-  Material, 
-  Flashcard, 
-  FlashcardDeck, 
-  PomodoroSession, 
-  ScheduleEvent, 
-  UserStats 
+import type {
+  Task,
+  Material,
+  Flashcard,
+  FlashcardDeck,
+  PomodoroSession,
+  ScheduleEvent,
+  UserStats,
+  SessionNote,
+  Reminder
 } from '@/contexts/StudyPlannerContext';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
@@ -107,6 +109,8 @@ class DataSyncService {
         pomodoroSessionsResult,
         scheduleEventsResult,
         userStatsResult,
+        sessionNotesResult,
+        remindersResult,
       ] = await Promise.all([
         supabase.from('tasks').select('*').eq('user_id', userId),
         supabase.from('materials').select('*').eq('user_id', userId),
@@ -115,6 +119,8 @@ class DataSyncService {
         supabase.from('pomodoro_sessions').select('*').eq('user_id', userId),
         supabase.from('schedule_events').select('*').eq('user_id', userId),
         supabase.from('user_stats').select('*').eq('user_id', userId).single(),
+        supabase.from('session_notes').select('*').eq('user_id', userId),
+        supabase.from('reminders').select('*').eq('user_id', userId),
       ]);
 
       this.setSyncStatus('synced');
@@ -135,6 +141,8 @@ class DataSyncService {
           xp: 0,
           xpToNextLevel: 100,
         },
+        sessionNotes: toCamelCase(sessionNotesResult.data || []),
+        reminders: toCamelCase(remindersResult.data || []),
       };
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -295,6 +303,44 @@ class DataSyncService {
       this.setSyncStatus('synced');
     } catch (error) {
       console.error('Error syncing user stats:', error);
+      this.setSyncStatus('error');
+      throw error;
+    }
+  }
+    // Session Notes
+  async syncSessionNote(note: SessionNote, userId: string, operation: 'insert' | 'update' | 'delete') {
+    try {
+      this.setSyncStatus('syncing');
+      const noteData = toSnakeCase({ ...note, user_id: userId });
+      if (operation === 'delete') {
+        await supabase.from('session_notes').delete().eq('id', note.id).eq('user_id', userId);
+      } else if (operation === 'insert') {
+        await supabase.from('session_notes').insert(noteData);
+      } else {
+        await supabase.from('session_notes').update(noteData).eq('id', note.id).eq('user_id', userId);
+      }
+      this.setSyncStatus('synced');
+    } catch (error) {
+      console.error('Error syncing session note:', error);
+      this.setSyncStatus('error');
+      throw error;
+    }
+  }
+  // Reminders
+  async syncReminder(reminder: Reminder, userId: string, operation: 'insert' | 'update' | 'delete') {
+    try {
+      this.setSyncStatus('syncing');
+      const reminderData = toSnakeCase({ ...reminder, user_id: userId });
+      if (operation === 'delete') {
+        await supabase.from('reminders').delete().eq('id', reminder.id).eq('user_id', userId);
+      } else if (operation === 'insert') {
+        await supabase.from('reminders').insert(reminderData);
+      } else {
+        await supabase.from('reminders').update(reminderData).eq('id', reminder.id).eq('user_id', userId);
+      }
+      this.setSyncStatus('synced');
+    } catch (error) {
+      console.error('Error syncing reminder:', error);
       this.setSyncStatus('error');
       throw error;
     }

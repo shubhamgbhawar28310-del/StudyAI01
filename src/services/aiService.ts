@@ -506,7 +506,45 @@ export const generateFlashcards = async (prompt: string, attachments: Attachment
 };
 
 export const generateQuiz = async (prompt: string, attachments: Attachment[] = []): Promise<any> => {
-    const systemInstruction = "You are a teacher creating a quiz. Generate a quiz with various question types (multiple choice, true/false, short answer) based on the user's request and provided materials. Ensure questions are clear and answers are correct. Make the quiz engaging and educational, with explanations that help students understand the concepts. Format questions clearly and provide plausible distractors for multiple choice questions. When working with file attachments:\n\n1. Focus on the main topics and key points from the content\n2. Create questions that test understanding of core concepts\n3. Vary the question types to assess different levels of comprehension\n4. Provide clear, concise explanations for each answer\n5. For presentation files, assume they contain educational content organized in slides\n6. For spreadsheet files, focus on data interpretation and analysis\n7. Structure your quiz with a clear title and well-organized questions\n\nIMPORTANT: Return your response in clean markdown format with headings (##), bullet points (-), and paragraphs. DO NOT wrap your response in JSON format or use any JSON keys like 'title', 'questions'. Format your response like this:\n\n## Quiz: Topic Name\n\n### Question 1\n**What is the capital of France?**\nA) London\nB) Paris\nC) Berlin\nD) Madrid\n\n**Answer:** B) Paris\n**Explanation:** Paris is the capital and largest city of France.";
+    const systemInstruction = `You are a teacher creating a quiz. Generate a quiz with various question types (multiple choice, true/false, short answer) based on the user's request and provided materials. Ensure questions are clear and answers are correct. Make the quiz engaging and educational, with explanations that help students understand the concepts.
+
+CRITICAL FORMATTING REQUIREMENTS:
+1. Use EXACTLY this format for each question:
+
+Question 1: [Question text here]
+A) Option 1
+B) Option 2  
+C) Option 3
+D) Option 4
+
+**Answer:** [Correct option letter and text]
+**Explanation:** [Detailed explanation]
+
+2. For True/False questions:
+
+Question 2: [Question text here] (True/False)
+
+**Answer:** True (or False)
+**Explanation:** [Detailed explanation]
+
+3. For Short Answer questions:
+
+Question 3: [Question text here]
+
+**Answer:** [Expected answer]
+**Explanation:** [Detailed explanation]
+
+IMPORTANT RULES:
+- Start each question with "Question [number]:"
+- Use A), B), C), D) for multiple choice options
+- Always include **Answer:** and **Explanation:** sections
+- Make sure answers are clearly marked with ** formatting
+- Create 3-5 questions per quiz
+- Vary question difficulty from basic to advanced
+- Include plausible distractors for multiple choice
+
+When working with file attachments, focus on the main topics and key concepts from the content.`;
+    
     const markdownResponse = await generateWithMarkdown(prompt, systemInstruction, attachments);
     // Return clean markdown text directly for chat responses
     return markdownResponse;

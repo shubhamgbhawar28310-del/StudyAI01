@@ -774,7 +774,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
                             processAndAddMessage("Can you explain a concept in detail? Please provide a clear explanation.");
                             break;
                           case 'Create Quiz':
-                            processAndAddMessage("I'd like to create a quiz to test my knowledge. Please help me with this.");
+                            processAndAddMessage("Create a quiz with 5 multiple choice questions about a topic of your choice. Include clear questions, answer options A-D, correct answers, and explanations for each question.");
                             break;
                           case 'Study Guide':
                             processAndAddMessage("Please help me create a study guide for better learning.");

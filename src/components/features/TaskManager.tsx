@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { TaskModal } from '@/components/modals/TaskModal'
+import { TaskDetailModal } from '@/components/modals/TaskDetailModal'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
 import { storageService } from '@/services/storageService'
 import { 
@@ -54,6 +55,8 @@ export function TaskManager({
   } = useStudyPlanner()
   
   const [showTaskModal, setShowTaskModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<string | null>(null)
   const [filter, setFilter] = useState('all') // all, pending, completed
   const [searchTerm, setSearchTerm] = useState('')
@@ -100,6 +103,20 @@ export function TaskManager({
   const handleTaskModalClose = () => {
     setShowTaskModal(false)
     setEditingTask(null)
+  }
+
+  const handleTaskClick = (taskId: string) => {
+    if (onTaskSelect) {
+      onTaskSelect(taskId)
+    } else {
+      setSelectedTaskId(taskId)
+      setShowDetailModal(true)
+    }
+  }
+
+  const handleDetailModalClose = () => {
+    setShowDetailModal(false)
+    setSelectedTaskId(null)
   }
 
   const handleStartPomodoro = (taskId: string) => {
@@ -439,7 +456,7 @@ export function TaskManager({
                       className={`border rounded-lg transition-all cursor-pointer ${
                         task.completed ? 'bg-muted/30 opacity-75' : 'hover:bg-muted/30'
                       }`}
-                      onClick={() => onTaskSelect?.(task.id)}
+                      onClick={() => handleTaskClick(task.id)}
                     >
                       <div className="flex items-start gap-4 p-4">
                         <Checkbox
@@ -595,6 +612,12 @@ export function TaskManager({
         isOpen={showTaskModal}
         onClose={handleTaskModalClose}
         editingTaskId={editingTask}
+      />
+
+      <TaskDetailModal
+        isOpen={showDetailModal}
+        onClose={handleDetailModalClose}
+        taskId={selectedTaskId}
       />
     </div>
   )

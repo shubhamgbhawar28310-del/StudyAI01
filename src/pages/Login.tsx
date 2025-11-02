@@ -1,97 +1,75 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { FeatureCarousel } from "@/components/landing/FeatureCarousel";
 import { useToast } from "@/hooks/use-toast";
+import { signIn, signInWithOAuth } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
+import { ForgotPasswordModal } from "@/components/modals/ForgotPasswordModal";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { user, initialized } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
     // Force light theme on login page
     const root = document.documentElement;
     root.classList.remove('dark');
     
-    // Do NOT automatically redirect if user is already logged in
-    // This prevents redirect loops - user chose to visit login page
-    
-    // Only listen for NEW sign in events from this page
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Small delay to ensure session is properly set
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 100);
-      }
-    });
-
     return () => {
-      subscription.unsubscribe();
       // Restore previous theme when leaving
-      const savedTheme = localStorage.getItem('theme');
+      const savedTheme = localStorage.getItem('studyai-theme');
       if (savedTheme === 'dark') {
         root.classList.add('dark');
       }
     };
   }, []);
 
+  // Handle successful login redirect
+  useEffect(() => {
+    if (initialized && user) {
+      const from = (location.state as any)?.from || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, initialized, navigate, location]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn({
         email: formData.email,
         password: formData.password,
       });
 
-      if (error) {
-        console.error('Login error:', error);
-        
-        // Provide specific error messages
-        let errorMessage = error.message;
-        
-        if (error.message.toLowerCase().includes('invalid login credentials') ||
-            error.message.toLowerCase().includes('invalid email or password')) {
-          errorMessage = "Invalid email or password. Please check your credentials and try again.";
-        } else if (error.message.toLowerCase().includes('email not confirmed')) {
-          errorMessage = "Please verify your email address before logging in. Check your inbox for the verification link.";
-        } else if (error.message.toLowerCase().includes('too many requests')) {
-          errorMessage = "Too many login attempts. Please wait a few minutes and try again.";
-        }
-        
-        toast({
-          title: "❌ Login Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } else {
-        console.log('Login success:', data);
+      if (result.success) {
         toast({
           title: "✅ Welcome Back!",
           description: "Logged in successfully! Redirecting to your dashboard...",
         });
+        // Navigation will be handled by the useEffect above
+      } else {
+        toast({
+          title: "❌ Login Failed",
+          description: result.error || "Failed to log in. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
       console.error('Login exception:', err);
-      
-      let errorMessage = "Failed to connect to authentication service. Please check your internet connection and try again.";
-      
-      if (err?.message) {
-        errorMessage = err.message;
-      }
-      
       toast({
         title: "❌ Connection Error",
-        description: errorMessage,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -101,21 +79,16 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/dashboard'
-        }
-      });
+      const result = await signInWithOAuth('google');
       
-      if (error) {
-        console.error('Error logging in with Google:', error.message);
+      if (!result.success) {
         toast({
           title: "❌ Google Login Failed",
-          description: error.message || "Failed to login with Google. Please try again.",
+          description: result.error || "Failed to login with Google. Please try again.",
           variant: "destructive",
         });
       }
+      // On success, OAuth will redirect automatically
     } catch (err: any) {
       console.error('Google login exception:', err);
       toast({
@@ -127,12 +100,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <>
+      <ForgotPasswordModal 
+        isOpen={showForgotPassword} 
+        onClose={() => setShowForgotPassword(false)} 
+      />
       
-      {/* Feature Carousel - Left side */}
-      <div className="w-full hidden md:block">
-        <FeatureCarousel />
-      </div>
+      <div className="min-h-screen flex">
+        
+        {/* Feature Carousel - Left side */}
+        <div className="w-full hidden md:block">
+          <FeatureCarousel />
+        </div>
 
       {/* Login Form - Right side */}
       <div className="w-full flex flex-col items-center justify-center bg-background px-8">
@@ -194,9 +173,13 @@ const Login = () => {
               />
               <label className="text-sm" htmlFor="rememberMe">Remember me</label>
             </div>
-            <Link to="#" className="text-sm text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-primary hover:underline"
+            >
               Forgot password?
-            </Link>
+            </button>
           </div>
 
           <button 
@@ -216,7 +199,8 @@ const Login = () => {
           </p>
         </form>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

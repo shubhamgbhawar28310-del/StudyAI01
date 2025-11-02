@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -53,6 +54,10 @@ const App = () => {
                           <Signup />
                         </PublicRoute>
                       } 
+                    />
+                    <Route 
+                      path="/reset-password" 
+                      element={<ResetPassword />} 
                     />
                     
                     {/* Protected routes - require authentication */}

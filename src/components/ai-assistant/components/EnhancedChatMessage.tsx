@@ -59,10 +59,30 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
     setToast(null);
   };
 
-  // Check if content is quiz-related
+  // Check if content is quiz-related - improved detection
   const isQuizContent = (content: string) => {
-    return content.toLowerCase().includes('quiz') && 
-           (content.includes('Question') || content.includes('**Question'));
+    const lowerContent = content.toLowerCase();
+    
+    // Check for quiz indicators
+    const hasQuizKeyword = lowerContent.includes('quiz') || lowerContent.includes('test');
+    
+    // Check for question patterns
+    const hasQuestionPattern = 
+      content.includes('Question') || 
+      content.includes('**Question') ||
+      /Question \d+/i.test(content) ||
+      /Q\d+/i.test(content) ||
+      /^\d+\./m.test(content);
+    
+    // Check for answer patterns
+    const hasAnswerPattern = 
+      content.includes('**Answer') ||
+      content.includes('Answer:') ||
+      /^[A-D]\)/m.test(content) ||
+      /^[A-D]\./m.test(content);
+    
+    // Must have questions and either quiz keyword or answer patterns
+    return hasQuestionPattern && (hasQuizKeyword || hasAnswerPattern);
   };
 
   // Render user message

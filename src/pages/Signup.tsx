@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, User, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { FeatureCarousel } from "@/components/landing/FeatureCarousel";
 import { useToast } from "@/hooks/use-toast";
-
+import { signUp, signInWithOAuth } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { user, initialized } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,28 +24,22 @@ const Signup = () => {
     const root = document.documentElement;
     root.classList.remove('dark');
     
-    // Do NOT automatically redirect if user is already logged in
-    // This prevents redirect loops - user chose to visit signup page
-    
-    // Only listen for NEW sign in events from this page
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Small delay to ensure session is properly set
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 100);
-      }
-    });
-
     return () => {
-      subscription.unsubscribe();
       // Restore previous theme when leaving
-      const savedTheme = localStorage.getItem('theme');
+      const savedTheme = localStorage.getItem('studyai-theme');
       if (savedTheme === 'dark') {
         root.classList.add('dark');
       }
     };
   }, []);
+
+  // Handle successful signup/login redirect
+  useEffect(() => {
+    if (initialized && user) {
+      const from = (location.state as any)?.from || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, initialized, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,28 +47,8 @@ const Signup = () => {
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Error",
-        description: "Passwords don't match!",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate password strength
-    if (formData.password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate name is provided
-    if (!formData.name.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter your full name.",
+        title: "❌ Passwords Don't Match",
+        description: "Please make sure both passwords are identical.",
         variant: "destructive",
       });
       return;
@@ -81,86 +57,44 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const result = await signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          emailRedirectTo: window.location.origin + '/dashboard',
-          data: {
-            full_name: formData.name,
-          }
-        }
+        fullName: formData.name,
       });
 
-      if (error) {
-        console.error('Signup error:', error);
-        
-        // Provide specific error messages based on error code
-        let errorMessage = error.message;
-        
-        if (error.message.toLowerCase().includes('already registered') || 
-            error.message.toLowerCase().includes('already exists')) {
-          errorMessage = "This email is already registered. Please try logging in instead.";
-        } else if (error.message.toLowerCase().includes('invalid email')) {
-          errorMessage = "Please enter a valid email address.";
-        } else if (error.message.toLowerCase().includes('password')) {
-          errorMessage = error.message; // Keep original password error message
-        } else if (error.message.toLowerCase().includes('network') || 
-                   error.message.toLowerCase().includes('fetch')) {
-          errorMessage = "Network error. Please check your internet connection and try again.";
+      if (result.success) {
+        if (result.requiresEmailVerification) {
+          // Email confirmation required
+          toast({
+            title: "✅ Account Created Successfully!",
+            description: "Please check your email to verify your account. You may need to check your spam folder.",
+            duration: 6000,
+          });
+          // Redirect to login after a delay
+          setTimeout(() => {
+            navigate('/login', { replace: true });
+          }, 3000);
+        } else {
+          // Auto-login successful (email confirmation disabled)
+          toast({
+            title: "✅ Account Created Successfully!",
+            description: "Welcome! Redirecting to your dashboard...",
+          });
+          // Navigation will be handled by the useEffect above
         }
-        
+      } else {
         toast({
-          title: "Signup Failed",
-          description: errorMessage,
+          title: "❌ Signup Failed",
+          description: result.error || "Failed to create account. Please try again.",
           variant: "destructive",
         });
-        return;
-      }
-
-      // Check if email confirmation is required
-      if (data?.user && !data.session) {
-        // Email confirmation required
-        console.log('Signup success - email confirmation required:', data);
-        toast({
-          title: "✅ Account Created Successfully!",
-          description: "Please check your email to verify your account. You may need to check your spam folder.",
-        });
-        // Optionally redirect to a confirmation page or login
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 2000);
-      } else if (data?.session) {
-        // Auto-login successful (email confirmation disabled)
-        console.log('Signup success - auto-logged in:', data);
-        toast({
-          title: "✅ Account Created Successfully!",
-          description: "Welcome! Redirecting to your dashboard...",
-        });
-        // The auth state change listener will handle navigation
-      } else {
-        // Unexpected response
-        console.log('Signup success - unexpected response:', data);
-        toast({
-          title: "✅ Account Created!",
-          description: "Your account has been created. Please try logging in.",
-        });
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 2000);
       }
     } catch (err: any) {
       console.error('Signup exception:', err);
-      
-      let errorMessage = "Failed to connect to authentication service. Please check your internet connection and try again.";
-      
-      if (err?.message) {
-        errorMessage = err.message;
-      }
-      
       toast({
         title: "❌ Connection Error",
-        description: errorMessage,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -170,21 +104,16 @@ const Signup = () => {
 
   const handleGoogleSignup = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/dashboard'
-        }
-      });
+      const result = await signInWithOAuth('google');
       
-      if (error) {
-        console.error('Error signing up with Google:', error.message);
+      if (!result.success) {
         toast({
           title: "❌ Google Signup Failed",
-          description: error.message || "Failed to sign up with Google. Please try again.",
+          description: result.error || "Failed to sign up with Google. Please try again.",
           variant: "destructive",
         });
       }
+      // On success, OAuth will redirect automatically
     } catch (err: any) {
       console.error('Google signup exception:', err);
       toast({

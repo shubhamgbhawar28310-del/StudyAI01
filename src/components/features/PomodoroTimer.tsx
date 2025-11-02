@@ -1,417 +1,408 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Settings, 
-  CheckSquare,
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useStudyPlanner } from '@/contexts/StudyPlannerContext';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Play,
+  Pause,
+  Square,
+  SkipForward,
   Timer,
   Coffee,
-  Target
-} from 'lucide-react'
+  Zap,
+  Settings,
+  Plus,
+  Save,
+  ListTodo,
+  Music,
+} from 'lucide-react';
 
 interface PomodoroTimerProps {
-  compactMode?: boolean
-  showTaskSelection?: boolean
+  taskId?: string;
+  eventId?: string;
+  onSessionComplete?: (pomodoroCount: number, totalMinutes: number) => void;
+  customWorkDuration?: number;
+  customBreakDuration?: number;
+  customLongBreakDuration?: number;
 }
 
-export function PomodoroTimer({ compactMode = false, showTaskSelection = true }: PomodoroTimerProps) {
-  const { 
-    state, 
-    addPomodoroSession, 
-    setCurrentPomodoroTask,
-    updateTask
-  } = useStudyPlanner()
+type TimerMode = 'work' | 'short-break' | 'long-break';
+
+export function PomodoroTimer({ 
+  taskId, 
+  eventId, 
+  onSessionComplete,
+  customWorkDuration,
+  customBreakDuration,
+  customLongBreakDuration
+}: PomodoroTimerProps) {
+  const { state, updateTask, updateScheduleEvent } = useStudyPlanner();
+  const { toast } = useToast();
   
-  const [time, setTime] = useState(25 * 60) // 25 minutes in seconds
-  const [isActive, setIsActive] = useState(false)
-  const [isBreak, setIsBreak] = useState(false)
-  const [sessions, setSessions] = useState(0)
-  const [workDuration, setWorkDuration] = useState(25)
-  const [breakDuration, setBreakDuration] = useState(5)
-  const [longBreakDuration, setLongBreakDuration] = useState(15)
-  const [sessionStartTime, setSessionStartTime] = useState<string | null>(null)
-
-  const currentTask = state.currentPomodoroTask
-  const totalTime = isBreak 
-    ? (sessions % 4 === 3 ? longBreakDuration : breakDuration) * 60 
-    : workDuration * 60
-  const progress = ((totalTime - time) / totalTime) * 100
-
+  // Get settings
+  const settings = state.settings.studyPreferences;
+  const workDuration = customWorkDuration || settings.pomodoroLength || 25;
+  const shortBreakDuration = customBreakDuration || settings.breakLength || 5;
+  const longBreakDuration = customLongBreakDuration || 15;
+  const sessionsUntilLongBreak = 4;
+  
+  // Timer state
+  const [mode, setMode] = useState<TimerMode>('work');
+  const [timeLeft, setTimeLeft] = useState(workDuration * 60); // in seconds
+  const [isRunning, setIsRunning] = useState(false);
+  const [completedPomodoros, setCompletedPomodoros] = useState(0);
+  const [totalWorkTime, setTotalWorkTime] = useState(0); // in minutes
+  
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Initialize audio for notifications
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    if (isActive && time > 0) {
-      interval = setInterval(() => {
-        setTime(time => time - 1)
-      }, 1000)
-    } else if (time === 0) {
-      // Timer finished
-      handleTimerComplete()
+    if (state.settings.notifications.notificationSound) {
+      audioRef.current = new Audio('/notification.mp3'); // Add notification sound to public folder
     }
-
-    return () => {
-      if (interval) clearInterval(interval)
+  }, [state.settings.notifications.notificationSound]);
+  
+  // Reset timer when custom durations change
+  useEffect(() => {
+    // Stop current timer if running
+    setIsRunning(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-  }, [isActive, time, isBreak, sessions])
-
-  const handleTimerComplete = () => {
-    const endTime = new Date().toISOString()
     
-    if (!isBreak) {
-      // Work session completed
-      const session = {
-        taskId: currentTask?.id,
-        duration: workDuration * 60,
-        completed: true,
-        startTime: sessionStartTime || new Date().toISOString(),
-        endTime,
-        type: 'work' as const
+    // Reset to work mode with new duration
+    setMode('work');
+    setTimeLeft(workDuration * 60);
+  }, [workDuration, shortBreakDuration, longBreakDuration]);
+  
+  // Timer logic
+  useEffect(() => {
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            handleTimerComplete();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRunning, timeLeft]);
+  
+  const handleTimerComplete = () => {
+    setIsRunning(false);
+    
+    // Play notification sound
+    if (audioRef.current && state.settings.notifications.notificationSound) {
+      audioRef.current.play().catch(console.error);
+    }
+    
+    if (mode === 'work') {
+      const newCount = completedPomodoros + 1;
+      setCompletedPomodoros(newCount);
+      setTotalWorkTime((prev) => prev + workDuration);
+      
+      // Update task progress
+      if (taskId) {
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          const progressIncrease = 10; // 10% per pomodoro
+          const newProgress = Math.min(100, task.progress + progressIncrease);
+          updateTask({
+            ...task,
+            progress: newProgress,
+            status: newProgress >= 100 ? 'completed' : 'in_progress',
+            completed: newProgress >= 100,
+          });
+        }
       }
       
-      addPomodoroSession(session)
-      setSessions(prev => prev + 1)
-      
-      // Update task progress if linked
-      if (currentTask) {
-        const newProgress = Math.min(100, currentTask.progress + 25)
-        updateTask({
-          ...currentTask,
-          progress: newProgress,
-          pomodoroSessions: currentTask.pomodoroSessions + 1
-        })
+      // Update event
+      if (eventId) {
+        const event = state.scheduleEvents.find((e) => e.id === eventId);
+        if (event) {
+          updateScheduleEvent({
+            ...event,
+            status: 'in_progress',
+          });
+        }
       }
       
-      // Start break
-      setIsBreak(true)
-      const nextBreakDuration = sessions % 4 === 3 ? longBreakDuration : breakDuration
-      setTime(nextBreakDuration * 60)
+      toast({
+        title: '🎉 Pomodoro Complete!',
+        description: `Great work! You've completed ${newCount} pomodoro${newCount > 1 ? 's' : ''}.`,
+      });
+      
+      // Auto-start break if enabled
+      if (settings.autoStartBreaks) {
+        startBreak(newCount);
+      } else {
+        // Suggest break
+        toast({
+          title: '☕ Time for a break!',
+          description: `Take a ${newCount % sessionsUntilLongBreak === 0 ? 'long' : 'short'} break.`,
+        });
+      }
     } else {
       // Break completed
-      const session = {
-        taskId: currentTask?.id,
-        duration: isBreak ? (sessions % 4 === 0 ? longBreakDuration : breakDuration) * 60 : 0,
-        completed: true,
-        startTime: sessionStartTime || new Date().toISOString(),
-        endTime,
-        type: (sessions % 4 === 0 ? 'long-break' : 'short-break') as const
+      toast({
+        title: '✅ Break Complete!',
+        description: 'Ready to get back to work?',
+      });
+      
+      // Reset to work mode
+      setMode('work');
+      setTimeLeft(workDuration * 60);
+    }
+  };
+  
+  const startBreak = (pomodoroCount: number) => {
+    const isLongBreak = pomodoroCount % sessionsUntilLongBreak === 0;
+    const breakMode: TimerMode = isLongBreak ? 'long-break' : 'short-break';
+    const breakDuration = isLongBreak ? longBreakDuration : shortBreakDuration;
+    
+    setMode(breakMode);
+    setTimeLeft(breakDuration * 60);
+    
+    if (settings.autoStartBreaks) {
+      setIsRunning(true);
+    }
+  };
+  
+  const handleStart = () => {
+    setIsRunning(true);
+    
+    // Update event status to in_progress
+    if (eventId) {
+      const event = state.scheduleEvents.find((e) => e.id === eventId);
+      if (event && event.status === 'scheduled') {
+        updateScheduleEvent({
+          ...event,
+          status: 'in_progress',
+          startedAt: new Date().toISOString(),
+        });
       }
-      
-      addPomodoroSession(session)
-      
-      // Start work session
-      setIsBreak(false)
-      setTime(workDuration * 60)
     }
     
-    setIsActive(false)
-    setSessionStartTime(null)
+    // Update task status
+    if (taskId) {
+      const task = state.tasks.find((t) => t.id === taskId);
+      if (task && task.status === 'pending') {
+        updateTask({
+          ...task,
+          status: 'in_progress',
+        });
+      }
+    }
+  };
+  
+  const handlePause = () => {
+    setIsRunning(false);
+  };
+  
+  const handleStop = () => {
+    setIsRunning(false);
     
-    // Play notification sound (in a real app)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(isBreak ? 'Break complete! Time to work.' : 'Work session complete! Time for a break.')
+    // Clear any running interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-  }
-
-  const toggleTimer = () => {
-    if (!isActive) {
-      setSessionStartTime(new Date().toISOString())
+    
+    // Call completion callback
+    if (onSessionComplete && completedPomodoros > 0) {
+      onSessionComplete(completedPomodoros, totalWorkTime);
     }
-    setIsActive(!isActive)
-  }
-
-  const resetTimer = () => {
-    setIsActive(false)
-    setTime(workDuration * 60)
-    setIsBreak(false)
-    setSessionStartTime(null)
-  }
-
+    
+    // Reset timer
+    setMode('work');
+    setTimeLeft(workDuration * 60);
+    setCompletedPomodoros(0);
+    setTotalWorkTime(0);
+  };
+  
+  const handleSkip = () => {
+    setIsRunning(false);
+    
+    if (mode === 'work') {
+      startBreak(completedPomodoros);
+    } else {
+      setMode('work');
+      setTimeLeft(workDuration * 60);
+    }
+  };
+  
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const handleTaskSelect = (taskId: string) => {
-    const task = state.tasks.find(t => t.id === taskId)
-    if (task) {
-      setCurrentPomodoroTask(task)
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  const getProgress = () => {
+    const totalDuration = mode === 'work' 
+      ? workDuration * 60 
+      : mode === 'short-break' 
+      ? shortBreakDuration * 60 
+      : longBreakDuration * 60;
+    return ((totalDuration - timeLeft) / totalDuration) * 100;
+  };
+  
+  const getModeColor = () => {
+    switch (mode) {
+      case 'work':
+        return 'from-red-500 to-orange-500';
+      case 'short-break':
+        return 'from-green-500 to-emerald-500';
+      case 'long-break':
+        return 'from-blue-500 to-purple-500';
     }
-  }
-
-  const getSessionTypeInfo = () => {
-    if (isBreak) {
-      return sessions % 4 === 0 
-        ? { type: 'Long Break', icon: Coffee, color: 'text-green-500' }
-        : { type: 'Short Break', icon: Coffee, color: 'text-blue-500' }
+  };
+  
+  const getModeIcon = () => {
+    switch (mode) {
+      case 'work':
+        return <Zap className="h-6 w-6" />;
+      case 'short-break':
+        return <Coffee className="h-6 w-6" />;
+      case 'long-break':
+        return <Coffee className="h-6 w-6" />;
     }
-    return { type: 'Focus Time', icon: Target, color: 'text-red-500' }
-  }
-
-  const sessionInfo = getSessionTypeInfo()
-  const SessionIcon = sessionInfo.icon
-
-  if (compactMode) {
-    return (
-      <Card>
-        <CardContent className="p-4">
+  };
+  
+  const getModeLabel = () => {
+    switch (mode) {
+      case 'work':
+        return 'Focus Time';
+      case 'short-break':
+        return 'Short Break';
+      case 'long-break':
+        return 'Long Break';
+    }
+  };
+  
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        <div className="space-y-6">
+          {/* Mode Badge */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full border-4 border-muted flex items-center justify-center">
-                  <span className="text-sm font-bold">{formatTime(time)}</span>
-                </div>
-                <Progress 
-                  value={progress} 
-                  className="absolute inset-0 w-12 h-12 rounded-full"
-                />
-              </div>
-              <div>
-                <p className="font-medium">{sessionInfo.type}</p>
-                <p className="text-xs text-muted-foreground">
-                  Session {sessions + 1}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                onClick={toggleTimer}
-                className="h-8 w-8 p-0"
-              >
-                {isActive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetTimer}
-                className="h-8 w-8 p-0"
-              >
-                <RotateCcw className="h-3 w-3" />
-              </Button>
+            <Badge className={`bg-gradient-to-r ${getModeColor()} text-white px-4 py-2`}>
+              <span className="flex items-center gap-2">
+                {getModeIcon()}
+                {getModeLabel()}
+              </span>
+            </Badge>
+            
+            <div className="flex items-center gap-2">
+              <Timer className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {completedPomodoros} / {sessionsUntilLongBreak}
+              </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-    >
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="h-5 w-5" />
-              <span>Pomodoro Timer</span>
+          
+          {/* Timer Display */}
+          <motion.div
+            key={mode}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center"
+          >
+            <div className={`text-7xl font-bold font-mono bg-gradient-to-r ${getModeColor()} bg-clip-text text-transparent`}>
+              {formatTime(timeLeft)}
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                Session {sessions + 1}
-              </Badge>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {/* Task Selection */}
-          {showTaskSelection && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                Current Task
-              </label>
-              <Select 
-                value={currentTask?.id || ''} 
-                onValueChange={handleTaskSelect}
+            <p className="text-sm text-muted-foreground mt-2">
+              {mode === 'work' ? 'Stay focused!' : 'Take a break!'}
+            </p>
+          </motion.div>
+          
+          {/* Progress Bar */}
+          <Progress value={getProgress()} className="h-2" />
+          
+          {/* Controls */}
+          <div className="flex items-center justify-center gap-2">
+            {!isRunning ? (
+              <Button
+                onClick={handleStart}
+                size="lg"
+                className={`bg-gradient-to-r ${getModeColor()} text-white`}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a task to focus on" />
-                </SelectTrigger>
-                <SelectContent>
-                  {state.tasks.filter(t => !t.completed).map(task => (
-                    <SelectItem key={task.id} value={task.id}>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {task.priority}
-                        </Badge>
-                        {task.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {currentTask && (
-                <div className="mt-2 p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4" />
-                    <span className="font-medium">{currentTask.title}</span>
-                  </div>
-                  <div className="mt-1">
-                    <Progress value={currentTask.progress} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Progress: {currentTask.progress}% • Sessions: {currentTask.pomodoroSessions}
-                    </p>
-                  </div>
-                </div>
-              )}
+                <Play className="h-5 w-5 mr-2" />
+                Start
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePause}
+                size="lg"
+                variant="outline"
+              >
+                <Pause className="h-5 w-5 mr-2" />
+                Pause
+              </Button>
+            )}
+            
+            <Button
+              onClick={handleStop}
+              size="lg"
+              variant="outline"
+              disabled={completedPomodoros === 0 && !isRunning}
+            >
+              <Square className="h-5 w-5 mr-2" />
+              Stop
+            </Button>
+            
+            <Button
+              onClick={handleSkip}
+              size="lg"
+              variant="ghost"
+              disabled={!isRunning}
+            >
+              <SkipForward className="h-5 w-5 mr-2" />
+              Skip
+            </Button>
+          </div>
+          
+          {/* Stats */}
+          {completedPomodoros > 0 && (
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{completedPomodoros}</p>
+                <p className="text-xs text-muted-foreground">Pomodoros</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{totalWorkTime}</p>
+                <p className="text-xs text-muted-foreground">Minutes</p>
+              </div>
             </div>
           )}
-
-          {/* Timer Display */}
-          <div className="text-center">
-            <div className="relative inline-flex items-center justify-center">
-              <svg className="w-40 h-40 transform -rotate-90">
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="hsl(var(--muted))"
-                  strokeWidth="8"
-                  fill="none"
-                />
-                <motion.circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke={isBreak ? "hsl(142 76% 36%)" : "hsl(346 87% 43%)"}
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 70}`}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 70 }}
-                  animate={{ 
-                    strokeDashoffset: 2 * Math.PI * 70 * (1 - progress / 100)
-                  }}
-                  transition={{ duration: 0.5 }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <SessionIcon className={`h-6 w-6 mb-2 ${sessionInfo.color}`} />
-                <span className="text-3xl font-bold">{formatTime(time)}</span>
-                <span className="text-sm text-muted-foreground">
-                  {sessionInfo.type}
-                </span>
-              </div>
-            </div>
+          
+          {/* Settings Info */}
+          <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+            <p>
+              Work: {workDuration}m • Short Break: {shortBreakDuration}m • Long Break: {longBreakDuration}m
+            </p>
           </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-3">
-            <Button
-              onClick={toggleTimer}
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:scale-105 transition-transform"
-            >
-              {isActive ? <Pause className="w-5 h-5 mr-2" /> : <Play className="w-5 h-5 mr-2" />}
-              {isActive ? 'Pause' : 'Start'}
-            </Button>
-            <Button variant="outline" onClick={resetTimer} size="lg">
-              <RotateCcw className="w-5 h-5 mr-2" />
-              Reset
-            </Button>
-          </div>
-
-          {/* Settings */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-            <div>
-              <label className="text-xs text-muted-foreground">Work (min)</label>
-              <Select 
-                value={workDuration.toString()} 
-                onValueChange={(value) => {
-                  setWorkDuration(parseInt(value))
-                  if (!isActive && !isBreak) {
-                    setTime(parseInt(value) * 60)
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[15, 20, 25, 30, 45, 60].map(duration => (
-                    <SelectItem key={duration} value={duration.toString()}>
-                      {duration}m
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Break (min)</label>
-              <Select 
-                value={breakDuration.toString()} 
-                onValueChange={(value) => setBreakDuration(parseInt(value))}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[3, 5, 10, 15].map(duration => (
-                    <SelectItem key={duration} value={duration.toString()}>
-                      {duration}m
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Long Break</label>
-              <Select 
-                value={longBreakDuration.toString()} 
-                onValueChange={(value) => setLongBreakDuration(parseInt(value))}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[15, 20, 30, 45].map(duration => (
-                    <SelectItem key={duration} value={duration.toString()}>
-                      {duration}m
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="text-center pt-4 border-t">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-2xl font-bold text-red-500">{sessions}</p>
-                <p className="text-xs text-muted-foreground">Completed</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-blue-500">
-                  {Math.floor(state.userStats.totalStudyTime / 60)}h
-                </p>
-                <p className="text-xs text-muted-foreground">Total Time</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-500">
-                  {state.userStats.currentStreak}
-                </p>
-                <p className="text-xs text-muted-foreground">Day Streak</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

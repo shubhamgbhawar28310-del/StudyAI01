@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DashboardSidebar } from '@/components/DashboardSidebar'
 import { TaskManager } from '@/components/features/TaskManager'
-import { PomodoroTimer } from '@/components/features/PomodoroTimer'
 import { FlashcardManager } from '@/components/features/FlashcardManager'
-import { ScheduleView } from '@/components/features/ScheduleView'
+import { DynamicScheduleView } from '@/components/features/DynamicScheduleView'
+import { EnhancedPomodoroTimer } from '@/components/features/EnhancedPomodoroTimer'
+import { FloatingMusicPlayer } from '@/components/features/FloatingMusicPlayer'
 import { ProgressTracker } from '@/components/features/ProgressTracker'
 import { MaterialsManager } from '@/components/features/MaterialsManager'
 import { AIAssistant } from '@/components/features/AIAssistant'
@@ -12,66 +13,55 @@ import { Settings } from '@/components/features/Settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { TaskModal } from '@/components/modals/TaskModal'
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator'
 import { DatabaseSetupWarning } from '@/components/DatabaseSetupWarning'
+import { MotivationalQuote } from '@/components/MotivationalQuote'
+import { fetchDashboardStats, DashboardStats } from '@/services/dashboardStatsService'
 import { 
   CheckSquare, 
   Timer, 
   Brain, 
   TrendingUp,
   Plus,
-  Calendar,
   Target,
   Flame,
+  Bot,
+  Loader2,
   FolderOpen,
-  Upload,
-  GraduationCap,
-  Bot
+  Upload
 } from 'lucide-react'
 
 function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
-  const { state, setCurrentPomodoroTask, dispatch } = useStudyPlanner()
+  const { state, setCurrentPomodoroTask } = useStudyPlanner()
+  const { user } = useAuth()
   const [showTaskModal, setShowTaskModal] = useState(false)
-  const [showMaterialUpload, setShowMaterialUpload] = useState(false)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
   
   const pendingTasks = state.tasks.filter(t => !t.completed)
-  const todayEvents = state.scheduleEvents.filter(event => {
-    const today = new Date().toDateString()
-    return new Date(event.startTime).toDateString() === today
-  })
-  
-  const flashcardsNeedingReview = state.flashcards.filter(card => {
-    if (card.reviewCount === 0) return true
-    if (!card.nextReview) return true
-    return new Date(card.nextReview) <= new Date()
-  })
 
-  const completionRate = state.userStats.totalTasks > 0 
-    ? Math.round((state.userStats.completedTasks / state.userStats.totalTasks) * 100)
-    : 0
-
-  const totalPomodoroSessions = state.pomodoroSessions.filter(s => s.completed).length
-
-  const handleQuickPomodoro = () => {
-    if (pendingTasks.length > 0) {
-      setCurrentPomodoroTask(pendingTasks[0])
-      setActiveTab('pomodoro')
-    } else {
-      alert('No pending tasks to focus on. Create a task first!')
+  // Fetch dashboard stats from Supabase
+  useEffect(() => {
+    async function loadStats() {
+      if (!user?.id) return
+      
+      setIsLoadingStats(true)
+      const fetchedStats = await fetchDashboardStats(user.id)
+      setStats(fetchedStats)
+      setIsLoadingStats(false)
     }
-  }
-  
+
+    loadStats()
+    
+    // Refresh stats every 30 seconds
+    const interval = setInterval(loadStats, 30000)
+    return () => clearInterval(interval)
+  }, [user?.id])
+
   const handleAddTask = () => {
     setShowTaskModal(true)
-  }
-  
-  const handleStudyCards = () => {
-    if (flashcardsNeedingReview.length > 0) {
-      setActiveTab('flashcards')
-    } else {
-      alert('No flashcards to review. Generate some flashcards first!')
-    }
   }
   
   const handleUploadMaterial = () => {
@@ -90,84 +80,89 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
     setActiveTab('pomodoro-timer')
   }
 
-  const handleFlashcards = () => {
-    setActiveTab('flashcards')
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Welcome back to <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">StudyAI</span>! 👋</h1>
         <p className="text-muted-foreground">Here's your study overview for today</p>
+        
+        {/* Motivational Quote */}
+        <MotivationalQuote />
       </div>
 
       {/* Quick Stats - Responsive Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="min-w-0">
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Completion</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{completionRate}%</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">{state.userStats.completedTasks}/{state.userStats.totalTasks}</p>
+      {isLoadingStats ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <Card className="min-w-0">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Completion</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.completionRate || 0}%</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">{stats?.completedTasks || 0}/{stats?.totalTasks || 0}</p>
+                </div>
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex-shrink-0" />
               </div>
-              <Target className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex-shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="min-w-0">
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Sessions</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{totalPomodoroSessions}</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">completed</p>
+          <Card className="min-w-0">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Sessions</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.sessionsToday || 0}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">today</p>
+                </div>
+                <Timer className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent flex-shrink-0" />
               </div>
-              <Timer className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent flex-shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="min-w-0">
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Level</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{state.userStats.level}</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">{state.userStats.xp} XP</p>
+          <Card className="min-w-0">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Level</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.level || 1}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">{stats?.xp || 0} XP</p>
+                </div>
+                <CheckSquare className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent flex-shrink-0" />
               </div>
-              <CheckSquare className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent flex-shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="min-w-0">
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Streak</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{state.userStats.currentStreak}</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">days</p>
+          <Card className="min-w-0">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Streak</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.currentStreak || 0}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">days</p>
+                </div>
+                <Flame className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent flex-shrink-0" />
               </div>
-              <Flame className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent flex-shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="min-w-0 col-span-2 sm:col-span-1">
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Materials</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{state.materials.length}</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">uploaded</p>
+          <Card className="min-w-0 col-span-2 sm:col-span-1">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Materials</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.materialsCount || 0}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">uploaded</p>
+                </div>
+                <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent flex-shrink-0" />
               </div>
-              <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent flex-shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <Card>
@@ -175,7 +170,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <Button 
               variant="outline"
               className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-blue-50 text-xs sm:text-sm bg-gradient-to-r from-blue-100 to-purple-100 border-blue-200"
@@ -187,20 +182,10 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             
             <Button 
               variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-purple-50 text-xs sm:text-sm bg-gradient-to-r from-purple-100 to-pink-100 border-purple-200"
-              disabled={flashcardsNeedingReview.length === 0}
-              onClick={handleStudyCards}
-            >
-              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-              <span className="text-center leading-tight text-purple-700">Study Cards ({flashcardsNeedingReview.length})</span>
-            </Button>
-            
-            <Button 
-              variant="outline"
               className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-indigo-50 text-xs sm:text-sm bg-gradient-to-r from-indigo-100 to-purple-100 border-indigo-200"
               onClick={handleUploadMaterial}
             >
-              <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
+              <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
               <span className="text-center leading-tight text-indigo-700">Upload Material</span>
             </Button>
             
@@ -230,15 +215,6 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               <Timer className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
               <span className="text-center leading-tight text-red-700">Pomodoro Timer </span>
             </Button>
-
-            <Button 
-              variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-blue-50 text-xs sm:text-sm bg-gradient-to-r from-blue-100 to-purple-100 border-blue-200"
-              onClick={handleFlashcards}
-            >
-              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <span className="text-center leading-tight text-blue-700">Flashcards </span>
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -254,14 +230,31 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             showHeader={true}
           />
           
-          <ScheduleView compactMode={true} showHeader={true} />
+          <DynamicScheduleView compactMode={true} showHeader={true} />
         </div>
 
-        {/* Right Column - Pomodoro, Flashcards and Materials */}
+        {/* Right Column - Quick Pomodoro */}
         <div className="space-y-6">
-          <PomodoroTimer compactMode={false} showTaskSelection={true} />
-          
-          <MaterialsManager compactMode={true} showHeader={true} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Timer className="h-5 w-5" />
+                Quick Pomodoro
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Start a focused study session
+              </p>
+              <Button
+                onClick={() => setActiveTab('pomodoro-timer')}
+                className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white"
+              >
+                <Timer className="h-4 w-4 mr-2" />
+                Start Pomodoro
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
       
@@ -275,6 +268,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
 }
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [musicEnabled, setMusicEnabled] = useState(false)
   
   console.log('Dashboard mounted with activeTab:', activeTab)
   console.log('Dashboard component rendering...')
@@ -286,11 +280,21 @@ export default function Dashboard() {
       case 'ai-assistant':
         return <AIAssistant />
       case 'study-planner':
-        return <ScheduleView />
+        return <DynamicScheduleView />
       case 'task-manager':
         return <TaskManager />
       case 'pomodoro-timer':
-        return <PomodoroTimer />
+        return (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold">Pomodoro Timer</h2>
+              <p className="text-muted-foreground">Focus on your tasks with the Pomodoro technique</p>
+            </div>
+            <div className="max-w-2xl mx-auto">
+              <EnhancedPomodoroTimer />
+            </div>
+          </div>
+        )
       case 'flashcards':
         return <FlashcardManager />
       case 'materials':
@@ -313,7 +317,20 @@ export default function Dashboard() {
         <DatabaseSetupWarning />
         
         {/* Sync Status Indicator */}
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+          <Button
+            onClick={() => setMusicEnabled(!musicEnabled)}
+            size="default"
+            variant={musicEnabled ? 'default' : 'outline'}
+            className={musicEnabled ? 'bg-gray-200 dark:bg-gray-700' : ''}
+            title={musicEnabled ? 'Disable Music' : 'Enable Music'}
+          >
+            <img 
+              src="/music (1).png" 
+              alt="Music" 
+              className="h-5 w-5"
+            />
+          </Button>
           <SyncStatusIndicator />
         </div>
         
@@ -328,6 +345,12 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </main>
+      
+      {/* Floating Music Player */}
+      <FloatingMusicPlayer
+        enabled={musicEnabled}
+        onClose={() => setMusicEnabled(false)}
+      />
     </div>
   )
 }

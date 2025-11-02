@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScheduleEventModal } from '@/components/modals/ScheduleEventModal'
+import { StudySessionModal } from '@/components/modals/StudySessionModal'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
 import { 
   Calendar, 
@@ -34,6 +35,10 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
   const [showEventModal, setShowEventModal] = useState(false)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; time: string } | null>(null)
+  
+  // Study Session Modal state
+  const [showSessionModal, setShowSessionModal] = useState(false)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   // Generate time slots for day/week view
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -43,10 +48,17 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
 
   // Get events for current view
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    return state.scheduleEvents.filter(event => 
-      event.startTime.startsWith(dateStr)
-    )
+    // Create start and end of day in local timezone
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    return state.scheduleEvents.filter(event => {
+      const eventDate = new Date(event.startTime);
+      return eventDate >= startOfDay && eventDate <= endOfDay;
+    });
   }
 
   const getEventsForWeek = () => {
@@ -199,7 +211,14 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
           ) : (
             <div className="space-y-2">
               {todayEvents.slice(0, 3).map(event => (
-                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                <div 
+                  key={event.id} 
+                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => {
+                    setSelectedEventId(event.id);
+                    setShowSessionModal(true);
+                  }}
+                >
                   <div className={`w-3 h-3 rounded-full ${getEventColor(event.type)}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{event.title}</p>
@@ -355,22 +374,38 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                             className={`relative text-xs p-1 rounded mb-1 text-white ${getEventColor(event.type)} cursor-pointer hover:opacity-80 group`}
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleEditEvent(event.id)
+                              setSelectedEventId(event.id)
+                              setShowSessionModal(true)
                             }}
                           >
                             <p className="font-medium truncate">{event.title}</p>
                             <p className="opacity-90">{formatTime(event.startTime)}</p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteScheduleEvent(event.id)
-                              }}
-                              className="absolute top-0 right-0 h-4 w-4 p-0 text-white hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditEvent(event.id)
+                                }}
+                                className="h-4 w-4 p-0 text-white hover:text-blue-300"
+                                title="Edit"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteScheduleEvent(event.id)
+                                }}
+                                className="h-4 w-4 p-0 text-white hover:text-red-300"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -406,7 +441,11 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                       key={event.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30"
+                      className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedEventId(event.id)
+                        setShowSessionModal(true)
+                      }}
                     >
                       <div className={`w-4 h-4 rounded-full ${getEventColor(event.type)}`} />
                       <div className="flex-1">
@@ -428,12 +467,13 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditEvent(event.id)}
                           className="h-8 w-8 p-0"
+                          title="Edit Event"
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -442,6 +482,7 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
                           size="sm"
                           onClick={() => deleteScheduleEvent(event.id)}
                           className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                          title="Delete Event"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -515,6 +556,15 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
         editingEventId={editingEventId}
         defaultDate={selectedTimeSlot?.date}
         defaultTime={selectedTimeSlot?.time}
+      />
+      
+      <StudySessionModal
+        isOpen={showSessionModal}
+        onClose={() => {
+          setShowSessionModal(false)
+          setSelectedEventId(null)
+        }}
+        eventId={selectedEventId}
       />
     </div>
   )

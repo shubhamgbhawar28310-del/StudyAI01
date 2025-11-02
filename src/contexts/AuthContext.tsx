@@ -1,53 +1,62 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useAuthState } from '@/hooks/useAuth';
+import { signOut as authSignOut } from '@/services/authService';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  initialized: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const authState = useAuthState();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { toast } = useToast();
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // Redirect to landing page
-    navigate('/', { replace: true });
+    try {
+      const result = await authSignOut();
+      
+      if (result.success) {
+        // Clear any local storage data
+        localStorage.removeItem('studyai-theme');
+        
+        // Redirect to landing page
+        navigate('/', { replace: true });
+        
+        toast({
+          title: '✅ Signed Out',
+          description: 'You have been successfully signed out.',
+        });
+      } else {
+        toast({
+          title: '❌ Sign Out Failed',
+          description: result.error || 'Failed to sign out. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast({
+        title: '❌ Error',
+        description: 'An unexpected error occurred while signing out.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const value = {
-    user,
-    session,
-    loading,
+    user: authState.user,
+    session: authState.session,
+    loading: authState.loading,
+    initialized: authState.initialized,
     signOut,
   };
 

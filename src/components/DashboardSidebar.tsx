@@ -173,14 +173,36 @@ export function DashboardSidebar({ activeTab, setActiveTab }: DashboardSidebarPr
                   "w-full justify-start transition-all group",
                   isCollapsed && "justify-center px-2"
                 )}
-                onClick={() => {
+                onClick={async () => {
                   // Cycle through themes: light -> dark -> system -> light
+                  let newTheme: 'light' | 'dark' | 'system'
                   if (theme === 'light') {
-                    setTheme('dark')
+                    newTheme = 'dark'
                   } else if (theme === 'dark') {
-                    setTheme('system')
+                    newTheme = 'system'
                   } else {
-                    setTheme('light')
+                    newTheme = 'light'
+                  }
+                  
+                  // Apply theme immediately
+                  setTheme(newTheme)
+                  
+                  // Save to database in background
+                  if (user?.id) {
+                    try {
+                      const { supabase } = await import('@/lib/supabase')
+                      await supabase
+                        .from('user_settings')
+                        .upsert({
+                          user_id: user.id,
+                          theme: newTheme
+                        }, {
+                          onConflict: 'user_id',
+                          ignoreDuplicates: false
+                        })
+                    } catch (error) {
+                      console.error('Error saving theme:', error)
+                    }
                   }
                 }}
                 title={`Current theme: ${theme}. Click to switch.`}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +10,17 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useTheme } from '@/components/theme-provider'
-import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import {
+  getUserSettings,
+  upsertUserSettings,
+  initializeUserSettings,
+  exportUserData,
+  changePassword,
+  deleteUserAccount,
+  UserSettings
+} from '@/services/settingsService'
 import {
   User,
   Palette,
@@ -32,199 +39,320 @@ import {
   CheckCircle,
   BarChart3,
   Save,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
-interface SettingsState {
-  profile: {
-    displayName: string
-    email: string
-  }
-  appearance: {
-    theme: string
-    language: string
-  }
-  studyPreferences: {
-    dailyGoal: number
-    pomodoroLength: number
-    breakLength: number
-    autoStartBreaks: boolean
-  }
-  notifications: {
-    studyReminders: boolean
-    taskDeadlines: boolean
-    achievements: boolean
-    weeklyReport: boolean
-  }
-}
 
 export function Settings() {
   const { theme, setTheme } = useTheme()
-  const { state, dispatch } = useStudyPlanner()
   const { user } = useAuth()
   const { toast } = useToast()
   
-  // Initialize settings with actual user data
-  const [settings, setSettings] = useState<SettingsState>({
-    profile: {
-      displayName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
-      email: user?.email || ''
-    },
-    appearance: {
-      theme: theme,
-      language: 'English'
-    },
-    studyPreferences: {
-      dailyGoal: 4,
-      pomodoroLength: 25,
-      breakLength: 5,
-      autoStartBreaks: true
-    },
-    notifications: {
-      studyReminders: true,
-      taskDeadlines: true,
-      achievements: true,
-      weeklyReport: false
-    }
-  })
+  const [settings, setSettings] = useState<UserSettings | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   
-  // Load user preferences from Supabase when component mounts
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const initialSettingsRef = useRef<string>('')
+
+  // Load settings on mount
   useEffect(() => {
-    loadUserPreferences()
+    loadSettings()
   }, [user])
 
-  const loadUserPreferences = async () => {
-    if (!user) return
-    
-    try {
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-      
-      if (data && !error) {
-        setSettings(prev => ({
-          ...prev,
-          profile: {
-            displayName: data.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
-            email: user?.email || ''
-          },
-          studyPreferences: {
-            dailyGoal: data.daily_goal || 4,
-            pomodoroLength: data.pomodoro_length || 25,
-            breakLength: data.break_length || 5,
-            autoStartBreaks: data.auto_start_breaks ?? true
-          },
-          notifications: {
-            studyReminders: data.study_reminders ?? true,
-            taskDeadlines: data.task_deadlines ?? true,
-            achievements: data.achievements ?? true,
-            weeklyReport: data.weekly_report ?? false
-          }
-        }))
-      }
-    } catch (error) {
-      console.log('No existing preferences, using defaults')
-    }
-  }
-
-  const [isLoading, setIsLoading] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  const handleSaveChanges = async () => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to save settings",
-        variant: "destructive"
-      })
+  const loadSettings = async () => {
+    if (!user?.id) {
+      setIsLoading(false)
       return
     }
     
     setIsLoading(true)
-    
     try {
-      // Update user metadata for display name
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { full_name: settings.profile.displayName }
-      })
+      let userSettings = await getUserSettings(user.id)
       
-      if (updateError) throw updateError
-      
-      // Save preferences to database
-      const { error: upsertError } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          display_name: settings.profile.displayName,
-          daily_goal: settings.studyPreferences.dailyGoal,
-          pomodoro_length: settings.studyPreferences.pomodoroLength,
-          break_length: settings.studyPreferences.breakLength,
-          auto_start_breaks: settings.studyPreferences.autoStartBreaks,
-          study_reminders: settings.notifications.studyReminders,
-          task_deadlines: settings.notifications.taskDeadlines,
-          achievements: settings.notifications.achievements,
-          weekly_report: settings.notifications.weeklyReport,
-          updated_at: new Date().toISOString()
-        })
-      
-      if (upsertError) throw upsertError
-      
-      // Update theme if changed
-      if (settings.appearance.theme !== theme) {
-        setTheme(settings.appearance.theme as 'light' | 'dark' | 'system')
+      // If no settings exist, initialize them with current theme
+      if (!userSettings) {
+        try {
+          userSettings = await initializeUserSettings(
+            user.id,
+            user.email || '',
+            user.user_metadata?.full_name
+          )
+          // Set theme to current theme from context
+          userSettings.theme = theme
+        } catch (initError) {
+          console.error('Error initializing settings:', initError)
+          // If initialization fails, use default settings with current theme
+          userSettings = {
+            user_id: user.id,
+            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+            theme: theme, // Use current theme from context
+            language: 'English',
+            daily_study_goal: 4,
+            pomodoro_length: 25,
+            break_length: 5,
+            auto_start_breaks: true,
+            study_reminders: false,
+            task_deadlines: false,
+            achievements: false,
+            weekly_report: false
+          }
+        }
+      } else {
+        // If settings exist but theme is different from current, use current theme
+        // This ensures sidebar changes are respected
+        if (userSettings.theme !== theme) {
+          userSettings.theme = theme
+        }
       }
       
+      setSettings(userSettings)
+      initialSettingsRef.current = JSON.stringify(userSettings)
+      
+      // Don't apply theme here since it's already set from context
+      // This prevents overwriting sidebar changes
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      
+      // Fallback to default settings if loading fails
+      const defaultSettings: UserSettings = {
+        user_id: user.id,
+        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        theme: 'system',
+        language: 'English',
+        daily_study_goal: 4,
+        pomodoro_length: 25,
+        break_length: 5,
+        auto_start_breaks: true,
+        study_reminders: false,
+        task_deadlines: false,
+        achievements: false,
+        weekly_report: false
+      }
+      
+      setSettings(defaultSettings)
+      initialSettingsRef.current = JSON.stringify(defaultSettings)
+      
       toast({
-        title: "Success",
-        description: "Settings saved successfully!"
-      })
-    } catch (error: any) {
-      console.error('Error saving settings:', error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save settings",
-        variant: "destructive"
+        title: 'Using Default Settings',
+        description: 'Could not load saved settings. Using defaults. Please run the database migration.',
+        variant: 'default'
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleExportData = () => {
-    const dataToExport = {
-      profile: settings.profile,
-      tasks: state.tasks,
-      flashcards: state.flashcards,
-      studyStats: state.userStats,
-      exportDate: new Date().toISOString()
+  // Check for changes
+  useEffect(() => {
+    if (settings && initialSettingsRef.current) {
+      const currentSettings = JSON.stringify(settings)
+      setHasChanges(currentSettings !== initialSettingsRef.current)
+    }
+  }, [settings])
+
+  // Auto-save after 2 seconds of inactivity
+  useEffect(() => {
+    if (hasChanges && settings && !isSaving) {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+      
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        handleSaveChanges(true)
+      }, 2000)
     }
     
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-      type: 'application/json'
-    })
-    
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `studyai-data-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+  }, [hasChanges, settings])
 
-  const handleDeleteAccount = () => {
-    if (window.confirm('Are you absolutely sure? This action cannot be undone and will permanently delete your account and all associated data.')) {
-      alert('Account deletion would be processed here. This is a demo.')
-      setShowDeleteConfirm(false)
+  const handleSaveChanges = async (isAutoSave = false) => {
+    if (!user?.id || !settings) return
+    
+    setIsSaving(true)
+    try {
+      await upsertUserSettings({
+        ...settings,
+        user_id: user.id
+      })
+      
+      // Update theme if changed
+      if (settings.theme) {
+        setTheme(settings.theme)
+      }
+      
+      initialSettingsRef.current = JSON.stringify(settings)
+      setHasChanges(false)
+      
+      toast({
+        title: 'Success',
+        description: isAutoSave ? 'Settings auto-saved' : 'Settings saved successfully!'
+      })
+    } catch (error: any) {
+      console.error('Error saving settings:', error)
+      
+      // Check if it's a table not found error
+      if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        toast({
+          title: 'Database Not Setup',
+          description: 'Please run the USER_SETTINGS_SETUP.sql migration in Supabase first.',
+          variant: 'destructive'
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to save settings. Changes will be kept locally.',
+          variant: 'destructive'
+        })
+      }
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleChangePassword = () => {
-    alert('Password change dialog would open here. This is a demo.')
+  const handleExportData = async () => {
+    if (!user?.id) return
+    
+    try {
+      const data = await exportUserData(user.id)
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json'
+      })
+      
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `studyai-data-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: 'Success',
+        description: 'Data exported successfully!'
+      })
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to export data',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'Passwords do not match',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'Password must be at least 6 characters',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    try {
+      await changePassword(newPassword)
+      
+      toast({
+        title: 'Success',
+        description: 'Password changed successfully!'
+      })
+      
+      setShowPasswordDialog(false)
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (error: any) {
+      console.error('Error changing password:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to change password',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return
+    
+    const confirmed = window.confirm(
+      'Are you absolutely sure? This action cannot be undone and will permanently delete your account and all associated data.'
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      await deleteUserAccount(user.id)
+      
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been permanently deleted'
+      })
+    } catch (error: any) {
+      console.error('Error deleting account:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete account',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+    setSettings(prev => prev ? { ...prev, [key]: value } : null)
+    
+    // If theme is being updated, apply it immediately
+    if (key === 'theme' && typeof value === 'string') {
+      setTheme(value as 'light' | 'dark' | 'system')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!settings && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 p-6">
+        <AlertTriangle className="h-12 w-12 text-orange-500" />
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold">Settings Not Available</h2>
+          <p className="text-muted-foreground max-w-md">
+            Unable to load settings. Please ensure the database migration has been run.
+          </p>
+          <Button onClick={loadSettings} className="mt-4">
+            <Loader2 className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -240,14 +368,29 @@ export function Settings() {
       </div>
 
       {/* Save Button - Fixed at top */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {hasChanges && (
+          <span className="text-sm text-muted-foreground flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+            Unsaved changes
+          </span>
+        )}
         <Button 
-          onClick={handleSaveChanges}
-          disabled={isLoading}
+          onClick={() => handleSaveChanges(false)}
+          disabled={!hasChanges || isSaving}
           className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
         >
-          <Save className="h-4 w-4 mr-2" />
-          {isLoading ? 'Saving...' : 'Save Changes'}
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          )}
         </Button>
       </div>
 
@@ -264,7 +407,7 @@ export function Settings() {
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg">
-                {settings.profile.displayName
+                {(settings.display_name || 'U')
                   .split(' ')
                   .map(n => n[0])
                   .join('')
@@ -273,12 +416,8 @@ export function Settings() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="text-lg font-semibold">{settings.profile.displayName}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary">Level {state.userStats.level}</Badge>
-                <span className="text-sm text-muted-foreground">•</span>
-                <span className="text-sm text-muted-foreground">{state.userStats.xp} XP</span>
-              </div>
+              <h3 className="text-lg font-semibold">{settings.display_name}</h3>
+              <p className="text-sm text-muted-foreground">{settings.email}</p>
             </div>
           </div>
 
@@ -290,11 +429,8 @@ export function Settings() {
               <Label htmlFor="displayName">Display Name</Label>
               <Input
                 id="displayName"
-                value={settings.profile.displayName}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  profile: { ...prev.profile, displayName: e.target.value }
-                }))}
+                value={settings.display_name || ''}
+                onChange={(e) => updateSetting('display_name', e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -302,12 +438,11 @@ export function Settings() {
               <Input
                 id="email"
                 type="email"
-                value={settings.profile.email}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  profile: { ...prev.profile, email: e.target.value }
-                }))}
+                value={settings.email || ''}
+                disabled
+                className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
           </div>
         </CardContent>
@@ -326,11 +461,8 @@ export function Settings() {
             <div className="space-y-2">
               <Label>Theme</Label>
               <Select
-                value={settings.appearance.theme}
-                onValueChange={(value) => setSettings(prev => ({
-                  ...prev,
-                  appearance: { ...prev.appearance, theme: value }
-                }))}
+                value={settings.theme}
+                onValueChange={(value) => updateSetting('theme', value as 'light' | 'dark' | 'system')}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose your preferred theme" />
@@ -345,11 +477,8 @@ export function Settings() {
             <div className="space-y-2">
               <Label>Language</Label>
               <Select
-                value={settings.appearance.language}
-                onValueChange={(value) => setSettings(prev => ({
-                  ...prev,
-                  appearance: { ...prev.appearance, language: value }
-                }))}
+                value={settings.language}
+                onValueChange={(value) => updateSetting('language', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -386,28 +515,22 @@ export function Settings() {
                 type="number"
                 min="1"
                 max="12"
-                value={settings.studyPreferences.dailyGoal}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  studyPreferences: { ...prev.studyPreferences, dailyGoal: parseInt(e.target.value) || 4 }
-                }))}
+                value={settings.daily_study_goal}
+                onChange={(e) => updateSetting('daily_study_goal', parseInt(e.target.value) || 4)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pomodoroLength" className="flex items-center gap-2">
                 <Timer className="h-4 w-4" />
-                Pomodoro Session Length (minutes)
+                Pomodoro Length (minutes)
               </Label>
               <Input
                 id="pomodoroLength"
                 type="number"
                 min="15"
                 max="60"
-                value={settings.studyPreferences.pomodoroLength}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  studyPreferences: { ...prev.studyPreferences, pomodoroLength: parseInt(e.target.value) || 25 }
-                }))}
+                value={settings.pomodoro_length}
+                onChange={(e) => updateSetting('pomodoro_length', parseInt(e.target.value) || 25)}
               />
             </div>
             <div className="space-y-2">
@@ -420,11 +543,8 @@ export function Settings() {
                 type="number"
                 min="5"
                 max="30"
-                value={settings.studyPreferences.breakLength}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  studyPreferences: { ...prev.studyPreferences, breakLength: parseInt(e.target.value) || 5 }
-                }))}
+                value={settings.break_length}
+                onChange={(e) => updateSetting('break_length', parseInt(e.target.value) || 5)}
               />
             </div>
           </div>
@@ -436,16 +556,13 @@ export function Settings() {
                 <Label htmlFor="autoStartBreaks">Auto-start Breaks</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Automatically start break timer
+                Automatically start break timer after work session
               </p>
             </div>
             <Switch
               id="autoStartBreaks"
-              checked={settings.studyPreferences.autoStartBreaks}
-              onCheckedChange={(checked) => setSettings(prev => ({
-                ...prev,
-                studyPreferences: { ...prev.studyPreferences, autoStartBreaks: checked }
-              }))}
+              checked={settings.auto_start_breaks}
+              onCheckedChange={(checked) => updateSetting('auto_start_breaks', checked)}
             />
           </div>
         </CardContent>
@@ -462,25 +579,25 @@ export function Settings() {
         <CardContent className="space-y-4">
           {[
             {
-              key: 'studyReminders',
+              key: 'study_reminders' as const,
               icon: Calendar,
               title: 'Study Reminders',
               description: 'Daily study session reminders'
             },
             {
-              key: 'taskDeadlines',
+              key: 'task_deadlines' as const,
               icon: AlertTriangle,
               title: 'Task Deadlines',
               description: 'Alerts for upcoming deadlines'
             },
             {
-              key: 'achievements',
+              key: 'achievements' as const,
               icon: CheckCircle,
               title: 'Achievements',
               description: 'Notifications for unlocked achievements'
             },
             {
-              key: 'weeklyReport',
+              key: 'weekly_report' as const,
               icon: BarChart3,
               title: 'Weekly Report',
               description: 'Weekly progress summary'
@@ -500,11 +617,8 @@ export function Settings() {
                 </div>
                 <Switch
                   id={item.key}
-                  checked={settings.notifications[item.key as keyof typeof settings.notifications]}
-                  onCheckedChange={(checked) => setSettings(prev => ({
-                    ...prev,
-                    notifications: { ...prev.notifications, [item.key]: checked }
-                  }))}
+                  checked={settings[item.key]}
+                  onCheckedChange={(checked) => updateSetting(item.key, checked)}
                 />
               </div>
             )
@@ -524,12 +638,57 @@ export function Settings() {
           <div className="space-y-3">
             <Button
               variant="outline"
-              onClick={handleChangePassword}
+              onClick={() => setShowPasswordDialog(!showPasswordDialog)}
               className="w-full justify-start"
             >
               <Key className="h-4 w-4 mr-2" />
               Change Password
             </Button>
+            
+            {showPasswordDialog && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="p-4 border rounded-lg space-y-3"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleChangePassword} size="sm">
+                    Update Password
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowPasswordDialog(false)
+                      setNewPassword('')
+                      setConfirmPassword('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
+            )}
             
             <Button
               variant="outline"
@@ -537,7 +696,7 @@ export function Settings() {
               className="w-full justify-start"
             >
               <Download className="h-4 w-4 mr-2" />
-              Data Export
+              Export Data
             </Button>
             
             <Separator />

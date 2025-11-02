@@ -1,4 +1,4 @@
-import { Upload, Calendar, Target, Timer, BarChart3, Zap, MessageSquare, Cloud, Sparkles } from "lucide-react";
+import { Upload, Calendar, Target, Timer, BarChart3, Zap, MessageSquare, Cloud, Sparkles, Music } from "lucide-react";
 const FeaturesSection = () => {
   return <div className="py-20 bg-background">
       {/* Smart Uploads Section */}
@@ -280,7 +280,7 @@ const FeaturesSection = () => {
       </section>
 
       {/* Optimization Section */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="scroll-reveal">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
@@ -347,6 +347,106 @@ const FeaturesSection = () => {
                 <div className="text-center">
                   <span className="text-2xl font-bold ai-gradient-text">28.5</span>
                   <span className="text-muted-foreground ml-1">hours this week</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Focus Music Section */}
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="scroll-reveal lg:order-2">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
+              <Music className="w-4 h-4 mr-2" />
+              Focus Music
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
+              Stay In The Zone
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+              Enhance your concentration with curated focus music and ambient sounds. Research shows that 
+              background music can help block distractions and create a peaceful work environment.
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
+                  <span className="w-2 h-2 bg-white rounded-full"></span>
+                </div>
+                <span className="text-foreground font-medium">Curated playlists optimized for studying</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
+                  <span className="w-2 h-2 bg-white rounded-full"></span>
+                </div>
+                <span className="text-foreground font-medium">Floating player accessible during sessions</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
+                  <span className="w-2 h-2 bg-white rounded-full"></span>
+                </div>
+                <span className="text-foreground font-medium">Instrumental and ambient sound options</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
+                  <span className="w-2 h-2 bg-white rounded-full"></span>
+                </div>
+                <span className="text-foreground font-medium">Seamless integration with Pomodoro timers</span>
+              </div>
+            </div>
+          </div>
+          <div className="scroll-reveal lg:order-1">
+            <div className="relative">
+              <div className="absolute inset-0 ai-gradient rounded-2xl opacity-10 blur-2xl"></div>
+              <div className="relative bg-white rounded-2xl shadow-xl border border-border p-6 ai-glow-soft">
+                <div className="space-y-4">
+                  <h3 className="font-semibold flex items-center">
+                    <Music className="w-5 h-5 mr-2 text-primary" />
+                    Focus Playlist
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-ai-soft rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 ai-gradient rounded-lg flex items-center justify-center">
+                          <Music className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Deep Focus Mix</p>
+                          <p className="text-xs text-muted-foreground">Ambient • 2h 15m</p>
+                        </div>
+                      </div>
+                      <div className="text-primary">▶</div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                          <Music className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Study Instrumental</p>
+                          <p className="text-xs text-muted-foreground">Classical • 1h 45m</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                          <Music className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Nature Sounds</p>
+                          <p className="text-xs text-muted-foreground">Ambient • 3h 20m</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Now Playing</span>
+                      <span className="font-medium">Deep Focus Mix</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
