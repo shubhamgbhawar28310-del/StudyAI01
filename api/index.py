@@ -43,11 +43,13 @@ def upload_document():
         
         print(f"Processing file: {file.filename}, size: {file_size_mb:.2f} MB")
         
-        if file_size_mb > 50:
+        # Increase limit for Vercel with more memory
+        max_file_size = 100  # 100MB for larger presentations
+        if file_size_mb > max_file_size:
             return jsonify({
                 'success': False,
                 'filename': file.filename,
-                'error': f'File size ({file_size_mb:.1f}MB) exceeds the maximum allowed size (50MB)'
+                'error': f'File size ({file_size_mb:.1f}MB) exceeds the maximum allowed size ({max_file_size}MB)'
             }), 413  # 413 Payload Too Large
         
         # Save file to temporary location
