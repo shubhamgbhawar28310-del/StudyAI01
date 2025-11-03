@@ -11,17 +11,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python-backend
 
 from src.services.document_service import DocumentService
 
-app = Flask(__name__)
-CORS(app)
+# Create Flask app
+application = Flask(__name__)
+CORS(application)
 
 # Initialize document service
 document_service = DocumentService()
 
-@app.route('/health', methods=['GET'])
+@application.route('/health', methods=['GET'])
+@application.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "OK", "message": "Python Document Processing Backend is running"})
 
-@app.route('/api/documents/upload', methods=['POST'])
+@application.route('/api/documents/upload', methods=['POST'])
 def upload_document():
     temp_file_path = None
     start_time = time.time()
@@ -136,7 +138,7 @@ def upload_document():
                 'filename': file.filename if 'file' in locals() else "unknown"
             }), 500
 
-@app.route('/api/documents/analyze-text', methods=['POST'])
+@application.route('/api/documents/analyze-text', methods=['POST'])
 def analyze_text():
     try:
         data = request.get_json()
@@ -156,6 +158,5 @@ def analyze_text():
     except Exception as e:
         return jsonify({"error": "Failed to analyze text", "details": str(e)}), 500
 
-# Vercel serverless function handler
-# This is the entry point for Vercel
-app = app
+# Vercel expects 'app' or 'application' as the WSGI handler
+app = application

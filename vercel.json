@@ -5,12 +5,8 @@
       "destination": "/api/index"
     },
     {
-      "source": "/api/documents/(.*)",
+      "source": "/api/(.*)",
       "destination": "/api/index"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ]
 }
