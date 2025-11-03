@@ -1,4 +1,5 @@
 import { Github, Twitter, Linkedin, Mail, GraduationCap } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -116,9 +117,9 @@ const Footer = () => {
             © {currentYear} StudyAI. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 sm:mt-0">
-            <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
+            <Link to="/privacy-policy" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Privacy Policy
-            </a>
+            </Link>
             <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Terms of Service
             </a>

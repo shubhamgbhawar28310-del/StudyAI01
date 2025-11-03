@@ -338,86 +338,74 @@ export function FloatingMusicPlayer({ enabled, onClose }: FloatingMusicPlayerPro
     }
     
     if (isPlaying) {
+      // Simple pause - don't reload or reset anything
       audioRef.current.pause();
       setIsPlaying(false);
+      console.log('Paused at:', audioRef.current.currentTime);
     } else {
       try {
-        // Make sure audio source is set correctly
-        const cleanFilePath = currentSong.file_path.trim().replace(/[\n\r]/g, '');
+        // Check if audio source is already set and valid
+        const needsSourceUpdate = !audioRef.current.src || audioRef.current.src === '';
         
-        // Build proper URL with encoding
-        let audioUrl;
-        if (currentSong.public_url) {
-          audioUrl = currentSong.public_url;
-        } else {
-          // Properly encode the file path
-          const encodedPath = encodeURIComponent(cleanFilePath);
-          audioUrl = `https://crdqpioymuvnzhtgrenj.supabase.co/storage/v1/object/public/music/${encodedPath}`;
+        if (needsSourceUpdate) {
+          // Only set source if it's not already set
+          const cleanFilePath = currentSong.file_path.trim().replace(/[\n\r]/g, '');
+          
+          let audioUrl;
+          if (currentSong.public_url) {
+            audioUrl = currentSong.public_url;
+          } else {
+            const encodedPath = encodeURIComponent(cleanFilePath);
+            audioUrl = `https://crdqpioymuvnzhtgrenj.supabase.co/storage/v1/object/public/music/${encodedPath}`;
+          }
+          
+          console.log('Setting audio source:', audioUrl);
+          audioRef.current.src = audioUrl;
+          audioRef.current.load();
+          
+          // Wait for the audio to be ready
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Audio loading timeout'));
+            }, 10000);
+            
+            const onCanPlay = () => {
+              clearTimeout(timeout);
+              audioRef.current?.removeEventListener('canplay', onCanPlay);
+              audioRef.current?.removeEventListener('error', onError);
+              resolve(true);
+            };
+            
+            const onError = (e) => {
+              clearTimeout(timeout);
+              audioRef.current?.removeEventListener('canplay', onCanPlay);
+              audioRef.current?.removeEventListener('error', onError);
+              reject(new Error(`Audio loading failed: ${audioRef.current?.error?.message || 'Unknown error'}`));
+            };
+            
+            if (audioRef.current.readyState >= 2) {
+              clearTimeout(timeout);
+              resolve(true);
+            } else {
+              audioRef.current.addEventListener('canplay', onCanPlay);
+              audioRef.current.addEventListener('error', onError);
+            }
+          });
         }
         
-        console.log('Original file path:', currentSong.file_path);
-        console.log('Clean file path:', cleanFilePath);
-        console.log('Encoded URL:', audioUrl);
-        
-        console.log('Clean file path:', cleanFilePath);
-        console.log('Audio URL:', audioUrl);
-        console.log('Audio element ready state:', audioRef.current.readyState);
-        console.log('Audio element network state:', audioRef.current.networkState);
-        
-        // Always set the source fresh
-        audioRef.current.src = audioUrl;
-        audioRef.current.load();
-        
-        // Wait for the audio to be ready
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Audio loading timeout'));
-          }, 10000); // 10 second timeout
-          
-          const onCanPlay = () => {
-            clearTimeout(timeout);
-            audioRef.current?.removeEventListener('canplay', onCanPlay);
-            audioRef.current?.removeEventListener('error', onError);
-            resolve(true);
-          };
-          
-          const onError = (e) => {
-            clearTimeout(timeout);
-            audioRef.current?.removeEventListener('canplay', onCanPlay);
-            audioRef.current?.removeEventListener('error', onError);
-            reject(new Error(`Audio loading failed: ${audioRef.current?.error?.message || 'Unknown error'}`));
-          };
-          
-          if (audioRef.current.readyState >= 2) {
-            // Already can play
-            clearTimeout(timeout);
-            resolve(true);
-          } else {
-            audioRef.current.addEventListener('canplay', onCanPlay);
-            audioRef.current.addEventListener('error', onError);
-          }
-        });
-        
-        console.log('Audio ready, attempting to play...');
-        console.log('Audio duration before play:', audioRef.current.duration);
-        console.log('Audio readyState:', audioRef.current.readyState);
-        
+        // Resume playback from current position
+        console.log('Resuming from:', audioRef.current.currentTime);
         await audioRef.current.play();
         setIsPlaying(true);
         
-        // Force duration update after play starts
-        setTimeout(() => {
-          if (audioRef.current && audioRef.current.duration && !isNaN(audioRef.current.duration)) {
-            console.log('Setting duration after play:', audioRef.current.duration);
-            setDuration(audioRef.current.duration);
-          }
-        }, 500);
+        // Update duration if needed
+        if (audioRef.current.duration && !isNaN(audioRef.current.duration) && duration === 0) {
+          setDuration(audioRef.current.duration);
+        }
         
         console.log('Audio playing successfully');
       } catch (err) {
         console.error('Playback error:', err);
-        console.error('Audio src:', audioRef.current?.src);
-        console.error('Current song:', currentSong);
         
         let errorMessage = 'Could not play audio. Please try again.';
         if (err.name === 'NotSupportedError') {
@@ -664,25 +652,23 @@ export function FloatingMusicPlayer({ enabled, onClose }: FloatingMusicPlayerPro
       dragElastic={0.1}
       className="fixed bottom-20 right-6 z-50"
     >
-      <div className="w-80 bg-white/95 dark:bg-black/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className={`${isMinimized ? 'w-64' : 'w-80'} bg-white/95 dark:bg-black/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-all duration-300 ease-in-out`}>
         {isMinimized ? (
-          // Minimized View
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Music className="h-6 w-6 text-purple-500" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {currentSong?.title || (songs.length === 0 ? 'No music' : 'Select a song')}
-                </p>
-              </div>
+          // Minimized View - Fixed layout with proper truncation
+          <div className="p-4 flex items-center gap-3 w-64">
+            <Music className="h-6 w-6 text-purple-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-sm font-medium truncate whitespace-nowrap overflow-hidden text-ellipsis">
+                {currentSong?.title || (songs.length === 0 ? 'No music' : 'Select a song')}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handlePlayPause}
                 disabled={!currentSong || isLoading}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -696,7 +682,7 @@ export function FloatingMusicPlayer({ enabled, onClose }: FloatingMusicPlayerPro
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMinimized(false)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>

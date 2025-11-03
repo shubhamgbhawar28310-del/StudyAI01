@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
+import { scheduleEventService } from '@/services/scheduleEventService'
 
 interface ScheduleEventModalProps {
   isOpen: boolean
@@ -37,6 +38,7 @@ export function ScheduleEventModal({
     type: 'study' as const,
     taskId: ''
   })
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (editingEventId) {
@@ -75,35 +77,57 @@ export function ScheduleEventModal({
     }
   }, [editingEventId, defaultDate, defaultTime, state.scheduleEvents])
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.startDate || !formData.startTime) return
 
-    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`)
-    const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`)
+    try {
+      setIsLoading(true)
+      
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`)
+      const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`)
 
-    const eventData = {
-      title: formData.title.trim(),
-      description: formData.description.trim() || undefined,
-      startTime: startDateTime.toISOString(),
-      endTime: endDateTime.toISOString(),
-      type: formData.type,
-      taskId: formData.taskId || undefined,
-      color: getEventColor(formData.type)
-    }
-
-    if (editingEventId) {
-      const existingEvent = state.scheduleEvents.find(e => e.id === editingEventId)
-      if (existingEvent) {
-        updateScheduleEvent({
-          ...existingEvent,
-          ...eventData
-        })
+      const eventData = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        type: formData.type,
+        taskId: formData.taskId || undefined,
+        color: getEventColor(formData.type)
       }
-    } else {
-      addScheduleEvent(eventData)
-    }
 
-    onClose()
+      if (editingEventId) {
+        // Use the service for updates
+        await scheduleEventService.updateEvent(editingEventId, eventData)
+        
+        // Also update local state
+        const existingEvent = state.scheduleEvents.find(e => e.id === editingEventId)
+        if (existingEvent) {
+          updateScheduleEvent({
+            ...existingEvent,
+            ...eventData
+          })
+        }
+      } else {
+        // Use the service for creation - this saves to Supabase
+        const savedEvent = await scheduleEventService.createEvent(eventData)
+        
+        // Update local state with the actual saved event (with proper ID from Supabase)
+        if (savedEvent) {
+          addScheduleEvent({
+            ...eventData,
+            id: savedEvent.id // Use the ID from Supabase to prevent duplicates
+          })
+        }
+      }
+
+      onClose()
+    } catch (error) {
+      console.error('Error saving event:', error)
+      // Error toast is handled in the service
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getEventColor = (type: string) => {
@@ -261,10 +285,10 @@ export function ScheduleEventModal({
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!formData.title.trim() || !formData.startDate || !formData.startTime}
+              disabled={!formData.title.trim() || !formData.startDate || !formData.startTime || isLoading}
               className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
             >
-              {editingEventId ? 'Update Event' : 'Create Event'}
+              {isLoading ? 'Saving...' : (editingEventId ? 'Update Event' : 'Create Event')}
             </Button>
           </div>
         </div>

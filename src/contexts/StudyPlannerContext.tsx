@@ -143,6 +143,9 @@ export interface AppSettings {
     autoStartBreaks: boolean
     autoAdvanceEnabled?: boolean // NEW: Enable auto-start of next session
   }
+  integrations: {
+    googleCalendarEnabled?: boolean // NEW: Google Calendar sync enabled
+  }
   notifications: {
     studyReminders: boolean
     taskDeadlines: boolean
@@ -247,6 +250,9 @@ const initialState: StudyPlannerState = {
       weeklyReport: false,
       notificationsEnabled: false,
       notificationSound: true
+    },
+    integrations: {
+      googleCalendarEnabled: false // Default to false, user can enable in settings
     }
   },
   isLoading: false,
@@ -495,7 +501,12 @@ function studyPlannerReducer(state: StudyPlannerState, action: StudyPlannerActio
       }
 
     case 'LOAD_DATA':
-      return { ...state, ...action.payload }
+      // Replace state completely to prevent duplicates on refresh
+      return { 
+        ...initialState, 
+        ...action.payload,
+        isLoading: false // Ensure loading is false after data load
+      }
 
     case 'ADD_SESSION_NOTE':
       return {
@@ -578,7 +589,7 @@ interface StudyPlannerContextType {
   updatePomodoroSession: (session: PomodoroSession) => void
   setCurrentPomodoroTask: (task: Task | undefined) => void
   // Schedule operations
-  addScheduleEvent: (eventData: Omit<ScheduleEvent, 'id'>) => void
+  addScheduleEvent: (eventData: Omit<ScheduleEvent, 'id'> | ScheduleEvent) => void
   updateScheduleEvent: (event: ScheduleEvent) => void
   deleteScheduleEvent: (id: string) => void
   // Material operations
@@ -935,15 +946,27 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
   }
 
   // Schedule operations
-  const addScheduleEvent = (eventData: Omit<ScheduleEvent, 'id'>) => {
+  const addScheduleEvent = (eventData: Omit<ScheduleEvent, 'id'> | ScheduleEvent) => {
+    // Check if event already exists to prevent duplicates
+    const existingEvent = state.scheduleEvents.find(e => 
+      e.title === eventData.title && 
+      e.startTime === eventData.startTime &&
+      e.endTime === eventData.endTime
+    )
+    
+    if (existingEvent) {
+      console.log('⚠️ Event already exists, skipping duplicate:', eventData.title)
+      return
+    }
+
     const event: ScheduleEvent = {
       ...eventData,
-      id: crypto.randomUUID()
+      id: ('id' in eventData && eventData.id) ? eventData.id : crypto.randomUUID() // Use provided ID or generate new one
     }
     dispatch({ type: 'ADD_SCHEDULE_EVENT', payload: event })
     
-    // Sync to Supabase
-    if (user) {
+    // Sync to Supabase only if this is a new event (no ID provided)
+    if (user && !('id' in eventData && eventData.id)) {
       dataSyncService.syncScheduleEvent(event, user.id, 'insert').catch(console.error)
     }
   }

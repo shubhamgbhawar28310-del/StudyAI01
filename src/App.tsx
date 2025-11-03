@@ -15,6 +15,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import { GoogleCalendarCallback } from './pages/GoogleCalendarCallback';
 
 const queryClient = new QueryClient();
 
@@ -58,6 +60,20 @@ const App = () => {
                     <Route 
                       path="/reset-password" 
                       element={<ResetPassword />} 
+                    />
+                    <Route 
+                      path="/privacy-policy" 
+                      element={<PrivacyPolicy />} 
+                    />
+                    
+                    {/* OAuth callback route */}
+                    <Route 
+                      path="/auth/google/callback" 
+                      element={
+                        <ProtectedRoute>
+                          <GoogleCalendarCallback />
+                        </ProtectedRoute>
+                      } 
                     />
                     
                     {/* Protected routes - require authentication */}

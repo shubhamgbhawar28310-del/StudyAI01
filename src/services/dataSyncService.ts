@@ -272,19 +272,57 @@ class DataSyncService {
   async syncScheduleEvent(event: ScheduleEvent, userId: string, operation: 'insert' | 'update' | 'delete') {
     try {
       this.setSyncStatus('syncing');
-      const eventData = toSnakeCase({ ...event, user_id: userId });
+      
+      // Prepare data with proper field mapping and defaults
+      const eventData = {
+        id: event.id,
+        user_id: userId,
+        title: event.title,
+        description: event.description || null,
+        start_time: event.startTime,
+        end_time: event.endTime,
+        type: event.type || 'study',
+        task_id: event.taskId || null,
+        color: event.color || null,
+        status: event.status || 'scheduled',
+        missed_count: event.missedCount || 0,
+        started_at: event.startedAt || null,
+        completed_at: event.completedAt || null,
+        synced_to_google: false,
+        created_at: operation === 'insert' ? new Date().toISOString() : undefined
+      };
 
+      let result;
       if (operation === 'delete') {
-        await supabase.from('schedule_events').delete().eq('id', event.id).eq('user_id', userId);
+        result = await supabase
+          .from('schedule_events')
+          .delete()
+          .eq('id', event.id)
+          .eq('user_id', userId);
       } else if (operation === 'insert') {
-        await supabase.from('schedule_events').insert(eventData);
+        result = await supabase
+          .from('schedule_events')
+          .insert(eventData);
       } else {
-        await supabase.from('schedule_events').update(eventData).eq('id', event.id).eq('user_id', userId);
+        result = await supabase
+          .from('schedule_events')
+          .update(eventData)
+          .eq('id', event.id)
+          .eq('user_id', userId);
       }
 
+      if (result.error) {
+        console.error('❌ Supabase error syncing schedule event:', result.error);
+        console.error('Operation:', operation, 'Event:', event);
+        console.error('Data sent:', eventData);
+        this.setSyncStatus('error');
+        throw result.error;
+      }
+
+      console.log('✅ Schedule event synced successfully:', operation, event.id);
       this.setSyncStatus('synced');
     } catch (error) {
-      console.error('Error syncing schedule event:', error);
+      console.error('❌ Error syncing schedule event:', error);
       this.setSyncStatus('error');
       throw error;
     }
