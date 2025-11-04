@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { format, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScheduleEventModal } from '@/components/modals/ScheduleEventModal';
 import { StudySessionModal } from '@/components/modals/StudySessionModal';
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext';
+import { EventBlock } from '@/components/calendar/EventBlock';
+import { useEventPosition } from '@/hooks/useEventPosition';
+import { useEventResize } from '@/hooks/useEventResize';
+import '@/styles/calendar-resize.css';
 import { 
   Calendar, 
   Plus, 
@@ -31,29 +36,45 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
   const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; time: string } | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; time: string; startTime?: string; endTime?: string } | null>(null);
   
   // Study Session Modal state
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   
+  // Drag and Drop state for existing events
+  const [draggedEvent, setDraggedEvent] = useState<any>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<{day: number; time: string} | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Drag to create state
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{day: number; time: string} | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{day: number; time: string} | null>(null);
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Resize hook
+  const { resizeState, handleResizeStart, getResizeTimeLabel } = useEventResize(updateScheduleEvent);
   
   // Scroll to current time on mount
   useEffect(() => {
     if (scrollContainerRef.current) {
       const now = new Date();
       const currentHour = now.getHours();
-      // Scroll to 2 hours before current time
-      const scrollPosition = Math.max(0, (currentHour - 2 - 6) * 80); // 80px per hour, starting from 6am
+      const currentMinute = now.getMinutes();
+      // Scroll to 2 hours before current time (adjusted for 30-min slots)
+      const currentSlot = (currentHour * 2) + (currentMinute >= 30 ? 1 : 0);
+      const scrollPosition = Math.max(0, (currentSlot - 4) * 40); // 40px per 30-min slot
       scrollContainerRef.current.scrollTop = scrollPosition;
     }
   }, [viewMode]);
   
-  // Generate time slots from 6 AM to 11 PM
-  const timeSlots = Array.from({ length: 18 }, (_, i) => {
-    const hour = i + 6; // Start from 6 AM
-    return `${hour.toString().padStart(2, '0')}:00`;
+  // Generate time slots for 24 hours in 30-minute intervals (48 slots)
+  const timeSlots = Array.from({ length: 48 }, (_, i) => {
+    const hour = Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   });
   
   // Get events for current view
@@ -71,21 +92,22 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
     });
   };
   
-  const getEventsForWeek = () => {
+  // Memoize week events calculation
+  const weekEvents = useMemo(() => {
     const startOfWeek = new Date(currentDate);
     startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
     
-    const weekEvents = [];
+    const events = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
-      weekEvents.push({
+      events.push({
         date: new Date(date),
         events: getEventsForDate(date)
       });
     }
-    return weekEvents;
-  };
+    return events;
+  }, [currentDate, state.scheduleEvents]);
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -96,11 +118,7 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
   };
   
   const formatTime = (timeString: string) => {
-    return new Date(timeString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    return format(new Date(timeString), 'h:mm a'); // 12-hour format with AM/PM
   };
   
   const getEventColor = (type: string) => {
@@ -142,9 +160,24 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
   };
   
   const handleTimeSlotClick = (date: Date, timeSlot: string) => {
+    const [hours, minutes] = timeSlot.split(':').map(Number);
+    
+    // Create start time
+    let startTime = new Date(date);
+    startTime = setHours(startTime, hours);
+    startTime = setMinutes(startTime, minutes);
+    startTime = setSeconds(startTime, 0);
+    startTime = setMilliseconds(startTime, 0);
+    
+    // Create end time (1 hour later by default)
+    let endTime = new Date(startTime);
+    endTime = setHours(endTime, hours + 1);
+    
     setSelectedTimeSlot({
-      date: date.toISOString().split('T')[0],
-      time: timeSlot
+      date: format(date, 'yyyy-MM-dd'),
+      time: timeSlot,
+      startTime: format(startTime, "yyyy-MM-dd'T'HH:mm:ss"),
+      endTime: format(endTime, "yyyy-MM-dd'T'HH:mm:ss"),
     });
     setShowEventModal(true);
   };
@@ -159,7 +192,193 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
     setEditingEventId(null);
     setSelectedTimeSlot(null);
   };
-  
+
+  // Drag existing event handlers
+  const handleDragStart = (e: React.DragEvent, event: any) => {
+    setDraggedEvent(event);
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+    (e.target as HTMLElement).style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = '1';
+    setIsDragging(false);
+    setDragOverSlot(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, dayIndex: number, timeSlot: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverSlot({ day: dayIndex, time: timeSlot });
+  };
+
+  const handleDragLeave = () => {
+    setDragOverSlot(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, date: Date, timeSlot: string) => {
+    e.preventDefault();
+    
+    if (!draggedEvent) return;
+
+    try {
+      const [hours, minutes] = timeSlot.split(':').map(Number);
+      
+      // Snap to 15-minute intervals
+      const totalMinutes = hours * 60 + minutes;
+      const snappedMinutes = roundToQuarterHour(totalMinutes);
+      const snappedHours = Math.floor(snappedMinutes / 60);
+      const snappedMins = snappedMinutes % 60;
+      
+      // Create new start time using date-fns to avoid timezone issues
+      let newStartTime = new Date(date);
+      newStartTime = setHours(newStartTime, snappedHours);
+      newStartTime = setMinutes(newStartTime, snappedMins);
+      newStartTime = setSeconds(newStartTime, 0);
+      newStartTime = setMilliseconds(newStartTime, 0);
+
+      const originalStart = new Date(draggedEvent.startTime);
+      const originalEnd = new Date(draggedEvent.endTime);
+      const duration = originalEnd.getTime() - originalStart.getTime();
+
+      const newEndTime = new Date(newStartTime.getTime() + duration);
+
+      const updatedEvent = {
+        ...draggedEvent,
+        startTime: newStartTime.toISOString(),
+        endTime: newEndTime.toISOString()
+      };
+
+      updateScheduleEvent(updatedEvent);
+    } catch (error) {
+      console.error('Error moving event:', error);
+    } finally {
+      setDraggedEvent(null);
+      setDragOverSlot(null);
+    }
+  };
+
+  // Helper: Convert time slot to minutes since midnight
+  const timeToMinutes = (timeSlot: string) => {
+    const [hours, minutes] = timeSlot.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Helper: Round to nearest 15 minutes for snapping
+  const roundToQuarterHour = (minutes: number) => {
+    return Math.round(minutes / 15) * 15;
+  };
+
+  // Drag to create handlers with 15-minute snapping
+  const handleMouseDown = (e: React.MouseEvent, dayIndex: number, timeSlot: string) => {
+    if ((e.target as HTMLElement).closest('.event-block')) return;
+    
+    setIsSelecting(true);
+    setSelectionStart({ day: dayIndex, time: timeSlot });
+    setSelectionEnd({ day: dayIndex, time: timeSlot });
+  };
+
+  const handleMouseEnter = (dayIndex: number, timeSlot: string) => {
+    if (isSelecting && selectionStart && selectionStart.day === dayIndex) {
+      setSelectionEnd({ day: dayIndex, time: timeSlot });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isSelecting && selectionStart && selectionEnd) {
+      const startMinutes = timeToMinutes(selectionStart.time);
+      const endMinutes = timeToMinutes(selectionEnd.time);
+      
+      // Snap to 15-minute intervals
+      const snappedStart = roundToQuarterHour(Math.min(startMinutes, endMinutes));
+      const snappedEnd = roundToQuarterHour(Math.max(startMinutes, endMinutes) + 30); // Add 30 to include end slot
+      
+      const startHour = Math.floor(snappedStart / 60);
+      const startMin = snappedStart % 60;
+      const endHour = Math.floor(snappedEnd / 60);
+      const endMin = snappedEnd % 60;
+      
+      const selectedDate = weekEvents[selectionStart.day].date;
+      
+      // Create start and end times with 15-minute precision using date-fns
+      let startTime = new Date(selectedDate);
+      startTime = setHours(startTime, startHour);
+      startTime = setMinutes(startTime, startMin);
+      startTime = setSeconds(startTime, 0);
+      startTime = setMilliseconds(startTime, 0);
+      
+      let endTime = new Date(selectedDate);
+      endTime = setHours(endTime, endHour);
+      endTime = setMinutes(endTime, endMin);
+      endTime = setSeconds(endTime, 0);
+      endTime = setMilliseconds(endTime, 0);
+      
+      setSelectedTimeSlot({
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        time: `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`,
+        startTime: format(startTime, "yyyy-MM-dd'T'HH:mm:ss"),
+        endTime: format(endTime, "yyyy-MM-dd'T'HH:mm:ss"),
+      });
+      
+      setEditingEventId(null);
+      setShowEventModal(true);
+    }
+    
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  };
+
+  useEffect(() => {
+    if (isSelecting) {
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => document.removeEventListener('mouseup', handleMouseUp);
+    }
+  }, [isSelecting, selectionStart, selectionEnd]);
+
+  const isInSelection = (dayIndex: number, timeSlot: string) => {
+    if (!isSelecting || !selectionStart || !selectionEnd || selectionStart.day !== dayIndex) {
+      return false;
+    }
+    
+    const currentMinutes = timeToMinutes(timeSlot);
+    const startMinutes = timeToMinutes(selectionStart.time);
+    const endMinutes = timeToMinutes(selectionEnd.time);
+    
+    const minMinutes = Math.min(startMinutes, endMinutes);
+    const maxMinutes = Math.max(startMinutes, endMinutes);
+    
+    return currentMinutes >= minMinutes && currentMinutes <= maxMinutes;
+  };
+
+  // Get floating time label for drag selection
+  const getSelectionTimeLabel = () => {
+    if (!isSelecting || !selectionStart || !selectionEnd) return '';
+    
+    const startMinutes = timeToMinutes(selectionStart.time);
+    const endMinutes = timeToMinutes(selectionEnd.time);
+    
+    const snappedStart = roundToQuarterHour(Math.min(startMinutes, endMinutes));
+    const snappedEnd = roundToQuarterHour(Math.max(startMinutes, endMinutes) + 30);
+    
+    const formatTimeLabel = (totalMinutes: number) => {
+      const hours = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      
+      // Create a date object for proper formatting
+      const selectedDate = weekEvents[selectionStart.day].date;
+      let tempDate = new Date(selectedDate);
+      tempDate = setHours(tempDate, hours);
+      tempDate = setMinutes(tempDate, mins);
+      
+      return format(tempDate, 'h:mm a'); // 12-hour format
+    };
+    
+    return `${formatTimeLabel(snappedStart)} – ${formatTimeLabel(snappedEnd)}`;
+  };
+
   const isCurrentTimeSlot = (date: Date, timeSlot: string) => {
     const now = new Date();
     const slotDate = new Date(date);
@@ -169,6 +388,33 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
       slotDate.toDateString() === now.toDateString() &&
       slotHour === now.getHours()
     );
+  };
+  
+  // Calculate event style for absolute positioning
+  const calculateEventStyle = (event: any): React.CSSProperties => {
+    const PIXELS_PER_MINUTE = 40 / 30; // 1.33px per minute
+    
+    // Use temp event if this event is being resized
+    const activeEvent = resizeState.resizingEventId === event.id && resizeState.tempEvent 
+      ? resizeState.tempEvent 
+      : event;
+    
+    const start = new Date(activeEvent.startTime);
+    const end = new Date(activeEvent.endTime);
+    
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const endMinutes = end.getHours() * 60 + end.getMinutes();
+    const duration = endMinutes - startMinutes;
+    
+    return {
+      position: 'absolute',
+      top: `${startMinutes * PIXELS_PER_MINUTE}px`,
+      height: `${Math.max(duration * PIXELS_PER_MINUTE, 20)}px`,
+      width: 'calc(100% - 8px)',
+      left: '4px',
+      right: '4px',
+      zIndex: resizeState.resizingEventId === event.id ? 20 : 10
+    };
   };
   
   if (compactMode) {
@@ -232,6 +478,8 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
             editingEventId={editingEventId}
             defaultDate={selectedTimeSlot?.date}
             defaultTime={selectedTimeSlot?.time}
+            defaultStartTime={selectedTimeSlot?.startTime}
+            defaultEndTime={selectedTimeSlot?.endTime}
           />
         </CardContent>
       </Card>
@@ -244,7 +492,10 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Schedule</h2>
-            <p className="text-muted-foreground">Plan and organize your study time</p>
+            <p className="text-muted-foreground">
+              Plan and organize your study time • 
+              <span className="text-blue-600 dark:text-blue-400 font-medium"> ✨ Drag to create or move events!</span>
+            </p>
           </div>
           <Button 
             onClick={() => setShowEventModal(true)}
@@ -319,7 +570,7 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
                 <div className="p-4 border-r bg-muted/30">
                   <p className="text-sm font-medium">Time</p>
                 </div>
-                {getEventsForWeek().map(({ date }, index) => {
+                {weekEvents.map(({ date }, index) => {
                   const isToday = date.toDateString() === new Date().toDateString();
                   return (
                     <div 
@@ -337,85 +588,121 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
               {/* Scrollable Time Grid */}
               <div 
                 ref={scrollContainerRef}
-                className="max-h-[600px] overflow-y-auto"
+                className="max-h-[600px] overflow-y-auto relative"
               >
-                {timeSlots.map(timeSlot => (
-                  <div key={timeSlot} className="grid grid-cols-8 gap-0 border-b min-h-[80px]">
-                    <div className="p-2 border-r bg-muted/10 flex items-start">
-                      <p className="text-xs text-muted-foreground font-medium">{timeSlot}</p>
-                    </div>
-                    {getEventsForWeek().map(({ date, events }, dayIndex) => {
-                      const dayEvents = events.filter(event => {
-                        const eventHour = new Date(event.startTime).getHours();
-                        const slotHour = parseInt(timeSlot.split(':')[0]);
-                        return eventHour === slotHour;
-                      });
-                      
-                      const isCurrentSlot = isCurrentTimeSlot(date, timeSlot);
-                      
+                {/* Floating time label during drag selection */}
+                {isSelecting && selectionStart && (
+                  <div 
+                    className="fixed z-50 bg-blue-600 text-white px-3 py-1 rounded-md shadow-lg text-sm font-medium pointer-events-none"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                    {getSelectionTimeLabel()}
+                  </div>
+                )}
+                
+                {/* Floating time label during resize */}
+                {resizeState.isResizing && resizeState.tempEvent && (
+                  <div 
+                    className="resize-time-label"
+                    style={{
+                      left: '50%',
+                      top: '50%'
+                    }}
+                  >
+                    {getResizeTimeLabel()}
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-8 gap-0">
+                  {/* Time column */}
+                  <div className="border-r">
+                    {timeSlots.map((timeSlot) => {
+                      const isHourMark = timeSlot.endsWith(':00');
                       return (
                         <div 
-                          key={dayIndex} 
-                          className={`border-r p-1 hover:bg-muted/20 cursor-pointer transition-colors relative ${
-                            isCurrentSlot ? 'bg-blue-50/50 dark:bg-blue-950/50' : ''
-                          }`}
-                          onClick={() => handleTimeSlotClick(date, timeSlot)}
+                          key={timeSlot}
+                          className={`p-2 ${isHourMark ? 'bg-muted/20 border-b-2' : 'bg-muted/5 border-b'} h-[40px] flex items-start`}
                         >
-                          {isCurrentSlot && (
-                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
-                          )}
-                          {dayEvents.map(event => (
-                            <div
-                              key={event.id}
-                              className={`relative text-xs p-2 rounded mb-1 text-white ${getEventColor(event.type)} cursor-pointer hover:opacity-90 group`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEventId(event.id);
-                                setShowSessionModal(true);
-                              }}
-                            >
-                              <div className="flex items-start justify-between gap-1">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{event.title}</p>
-                                  <p className="opacity-90 text-[10px]">{formatTime(event.startTime)}</p>
-                                </div>
-                                <div className={`w-2 h-2 rounded-full ${getStatusColor(event.status || 'scheduled')} flex-shrink-0`} />
-                              </div>
-                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditEvent(event.id);
-                                  }}
-                                  className="h-5 w-5 p-0 text-white hover:text-blue-300"
-                                  title="Edit"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm('Delete this event?')) {
-                                      deleteScheduleEvent(event.id);
-                                    }
-                                  }}
-                                  className="h-5 w-5 p-0 text-white hover:text-red-300"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                          <p className={`text-xs ${isHourMark ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}>
+                            {format(new Date(`2000-01-01T${timeSlot}`), 'h:mm a')}
+                          </p>
                         </div>
                       );
                     })}
                   </div>
-                ))}
+                  
+                  {/* Day columns with grid and events layers */}
+                  {weekEvents.map(({ date, events }, dayIndex) => (
+                    <div key={dayIndex} className="calendar-day-column border-r">
+                      {/* Grid layer for clicking */}
+                      <div className="grid-layer">
+                        {timeSlots.map((timeSlot) => {
+                          const isHourMark = timeSlot.endsWith(':00');
+                          const isCurrentSlot = isCurrentTimeSlot(date, timeSlot);
+                          
+                          return (
+                            <div
+                              key={timeSlot}
+                              className={`grid-cell ${isHourMark ? 'border-b-2' : ''} hover:bg-muted/20 cursor-pointer transition-colors ${
+                                isCurrentSlot ? 'bg-blue-50/50 dark:bg-blue-950/50' : ''
+                              } ${
+                                isInSelection(dayIndex, timeSlot) 
+                                  ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-400 border-dashed' 
+                                  : ''
+                              } ${
+                                dragOverSlot?.day === dayIndex && dragOverSlot?.time === timeSlot 
+                                  ? 'bg-green-100 dark:bg-green-900/50 border-2 border-green-400 border-dashed' 
+                                  : ''
+                              }`}
+                              onClick={() => handleTimeSlotClick(date, timeSlot)}
+                              onMouseDown={(e) => handleMouseDown(e, dayIndex, timeSlot)}
+                              onMouseEnter={() => handleMouseEnter(dayIndex, timeSlot)}
+                              onDragOver={(e) => handleDragOver(e, dayIndex, timeSlot)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, date, timeSlot)}
+                            >
+                              {isCurrentSlot && (
+                                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Events layer with absolute positioning */}
+                      <div className="events-layer">
+                        {events.map(event => (
+                          <EventBlock
+                            key={event.id}
+                            event={event}
+                            style={calculateEventStyle(event)}
+                            onResizeStart={handleResizeStart}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                            onClick={() => {
+                              setSelectedEventId(event.id);
+                              setShowSessionModal(true);
+                            }}
+                            onEdit={() => handleEditEvent(event.id)}
+                            onDelete={() => {
+                              if (confirm('Delete this event?')) {
+                                deleteScheduleEvent(event.id);
+                              }
+                            }}
+                            isResizing={resizeState.resizingEventId === event.id}
+                            isDragging={isDragging && draggedEvent?.id === event.id}
+                            getEventColor={getEventColor}
+                            getStatusColor={getStatusColor}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </>
           )}
@@ -553,6 +840,8 @@ export function DynamicScheduleView({ compactMode = false, showHeader = true }: 
         editingEventId={editingEventId}
         defaultDate={selectedTimeSlot?.date}
         defaultTime={selectedTimeSlot?.time}
+        defaultStartTime={selectedTimeSlot?.startTime}
+        defaultEndTime={selectedTimeSlot?.endTime}
       />
       
       <StudySessionModal

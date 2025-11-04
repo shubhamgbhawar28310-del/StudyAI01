@@ -23,23 +23,43 @@ serve(async (req) => {
     }
 
     // Exchange code for tokens
+    // IMPORTANT: redirect_uri must EXACTLY match what was used in the initial OAuth request
+    const redirectUri = Deno.env.get('GOOGLE_REDIRECT_URI') || 'http://localhost:5173/auth/google/callback';
+    
+    console.log('🔍 Token exchange attempt:', {
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID'),
+      redirect_uri: redirectUri,
+      redirect_uri_length: redirectUri.length,
+      redirect_uri_trimmed: redirectUri.trim(),
+      has_code: !!code,
+      code_length: code?.length,
+      has_secret: !!Deno.env.get('GOOGLE_CLIENT_SECRET'),
+      env_redirect_uri: Deno.env.get('GOOGLE_REDIRECT_URI'),
+      all_env_keys: Object.keys(Deno.env.toObject())
+    });
+    
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         code,
-        client_id: Deno.env.get('GOOGLE_CLIENT_ID'),
-        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET'),
-        redirect_uri: Deno.env.get('GOOGLE_REDIRECT_URI'),
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') || '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') || '',
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
-      }),
+      }).toString(),
     });
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.text();
-      throw new Error(`Token exchange failed: ${error}`);
+      console.error('Token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error
+      });
+      throw new Error(`Token exchange failed (${tokenResponse.status}): ${error}`);
     }
 
     const tokens = await tokenResponse.json();

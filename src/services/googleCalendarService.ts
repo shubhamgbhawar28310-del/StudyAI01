@@ -42,6 +42,13 @@ export const googleCalendarService = {
     authUrl.searchParams.append('prompt', 'consent');
     authUrl.searchParams.append('state', window.location.pathname); // Return to current page
 
+    console.log('🚀 Initiating Google Calendar OAuth:', {
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: GOOGLE_REDIRECT_URI,
+      redirect_uri_length: GOOGLE_REDIRECT_URI.length,
+      full_url: authUrl.toString()
+    });
+
     // Open in popup
     const width = 500;
     const height = 600;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { format } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,8 @@ interface ScheduleEventModalProps {
   editingEventId?: string | null
   defaultDate?: string
   defaultTime?: string
+  defaultStartTime?: string
+  defaultEndTime?: string
 }
 
 export function ScheduleEventModal({ 
@@ -20,7 +23,9 @@ export function ScheduleEventModal({
   onClose, 
   editingEventId,
   defaultDate,
-  defaultTime
+  defaultTime,
+  defaultStartTime,
+  defaultEndTime
 }: ScheduleEventModalProps) {
   const { 
     state, 
@@ -60,22 +65,43 @@ export function ScheduleEventModal({
       }
     } else {
       const now = new Date()
-      const defaultStartTime = defaultTime || '09:00'
-      const endTime = new Date(`2000-01-01T${defaultStartTime}:00`)
-      endTime.setHours(endTime.getHours() + 1)
+      
+      // Use provided ISO times if available, otherwise use defaults
+      let startDate, startTime, endDate, endTime;
+      
+      if (defaultStartTime && defaultEndTime) {
+        // Parse as local datetime string (not ISO with Z)
+        const startDT = new Date(defaultStartTime);
+        const endDT = new Date(defaultEndTime);
+        
+        // Extract date and time in local timezone
+        startDate = defaultStartTime.split('T')[0];
+        startTime = defaultStartTime.split('T')[1].slice(0, 5);
+        endDate = defaultEndTime.split('T')[0];
+        endTime = defaultEndTime.split('T')[1].slice(0, 5);
+      } else {
+        const defaultStartTimeStr = defaultTime || '09:00';
+        const calculatedEndTime = new Date(`2000-01-01T${defaultStartTimeStr}:00`);
+        calculatedEndTime.setHours(calculatedEndTime.getHours() + 1);
+        
+        startDate = defaultDate || now.toISOString().split('T')[0];
+        startTime = defaultStartTimeStr;
+        endDate = defaultDate || now.toISOString().split('T')[0];
+        endTime = calculatedEndTime.toTimeString().slice(0, 5);
+      }
       
       setFormData({
         title: '',
         description: '',
-        startDate: defaultDate || now.toISOString().split('T')[0],
-        startTime: defaultStartTime,
-        endDate: defaultDate || now.toISOString().split('T')[0],
-        endTime: endTime.toTimeString().slice(0, 5),
+        startDate,
+        startTime,
+        endDate,
+        endTime,
         type: 'study',
         taskId: ''
       })
     }
-  }, [editingEventId, defaultDate, defaultTime, state.scheduleEvents])
+  }, [editingEventId, defaultDate, defaultTime, defaultStartTime, defaultEndTime, state.scheduleEvents])
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.startDate || !formData.startTime) return
@@ -252,6 +278,11 @@ export function ScheduleEventModal({
                   }))
                 }}
               />
+              {formData.startTime && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(new Date(`2000-01-01T${formData.startTime}`), 'h:mm a')}
+                </p>
+              )}
             </div>
           </div>
 
@@ -276,6 +307,11 @@ export function ScheduleEventModal({
                 value={formData.endTime}
                 onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
               />
+              {formData.endTime && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(new Date(`2000-01-01T${formData.endTime}`), 'h:mm a')}
+                </p>
+              )}
             </div>
           </div>
 

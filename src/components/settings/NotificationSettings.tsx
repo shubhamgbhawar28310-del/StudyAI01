@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { reminderSettingsService } from '@/services/reminderSettingsService';
 import { notificationService } from '@/services/notificationService';
 import { useAuth } from '@/contexts/AuthContext';
+import { GoogleCalendarSyncButton } from '@/components/features/GoogleCalendarSyncButton';
 
 export function NotificationSettings() {
   const { user } = useAuth();
@@ -463,7 +464,7 @@ export function NotificationSettings() {
             Sync your StudyAI schedule with Google Calendar
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-start space-x-3">
               <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/20">
@@ -501,6 +502,22 @@ export function NotificationSettings() {
               )}
             </Button>
           </div>
+
+          {/* Manual Sync Button - Only show when connected */}
+          {settings.google_calendar_connected && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Manual Sync</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manually sync your events to Google Calendar
+                  </p>
+                </div>
+                <GoogleCalendarSyncButton />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

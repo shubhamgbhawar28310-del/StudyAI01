@@ -26,11 +26,13 @@ export interface TaskNote {
 
 /**
  * Upload a file for a task (stores as base64 in database)
+ * Also automatically adds the file to Materials Manager for universal access
  */
 export const uploadTaskFile = async (
   userId: string,
   taskId: string,
-  file: File
+  file: File,
+  addToMaterials?: (material: any) => string
 ): Promise<TaskFile | null> => {
   try {
     // Read file as base64
@@ -55,6 +57,49 @@ export const uploadTaskFile = async (
     if (error) {
       console.error('Error uploading file:', error);
       throw error;
+    }
+
+    // Also add to Materials Manager if function is provided
+    if (addToMaterials && data) {
+      try {
+        // Determine material type from file type
+        let materialType: 'note' | 'pdf' | 'image' | 'document' | 'presentation' | 'link' | 'other' = 'other';
+        const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+        
+        if (file.type.startsWith('image/')) {
+          materialType = 'image';
+        } else if (file.type === 'application/pdf' || fileExtension === 'pdf') {
+          materialType = 'pdf';
+        } else if (file.type.includes('presentation') || file.type.includes('powerpoint') ||
+                  ['ppt', 'pptx'].includes(fileExtension)) {
+          materialType = 'presentation';
+        } else if (file.type.includes('word') || file.type.includes('document') ||
+                  ['doc', 'docx'].includes(fileExtension)) {
+          materialType = 'document';
+        } else if (file.type.startsWith('text/') || ['txt', 'md'].includes(fileExtension)) {
+          materialType = 'note';
+        }
+
+        // Extract base64 content from data URL
+        const base64Content = fileData.split(',')[1] || '';
+
+        // Add to materials with task reference
+        addToMaterials({
+          title: file.name,
+          description: `Uploaded from task on ${new Date().toLocaleDateString()}`,
+          type: materialType,
+          fileName: file.name,
+          fileSize: file.size,
+          content: base64Content,
+          tags: ['task-upload', `task-${taskId}`],
+          taskId: taskId // Link back to the task
+        });
+
+        console.log(`File "${file.name}" added to Materials Manager`);
+      } catch (materialError) {
+        console.error('Error adding file to Materials Manager:', materialError);
+        // Don't fail the upload if materials addition fails
+      }
     }
 
     return data;

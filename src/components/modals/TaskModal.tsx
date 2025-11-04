@@ -43,7 +43,7 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ isOpen, onClose, editingTaskId }: TaskModalProps) {
-  const { state, addTask, updateTask, getTaskById } = useStudyPlanner();
+  const { state, addTask, updateTask, getTaskById, addMaterial } = useStudyPlanner();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -259,8 +259,8 @@ export function TaskModal({ isOpen, onClose, editingTaskId }: TaskModalProps) {
             prev.map((f) => (f.id === selectedFile.id ? { ...f, progress: 50 } : f))
           );
 
-          // Upload file
-          const uploadedFile = await uploadTaskFile(user.id, taskId, selectedFile.file);
+          // Upload file (also adds to Materials Manager)
+          const uploadedFile = await uploadTaskFile(user.id, taskId, selectedFile.file, addMaterial);
 
           if (uploadedFile) {
             // Update status to success

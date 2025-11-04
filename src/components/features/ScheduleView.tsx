@@ -3,23 +3,17 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScheduleEventModal } from '@/components/modals/ScheduleEventModal'
 import { StudySessionModal } from '@/components/modals/StudySessionModal'
+import { InteractiveCalendar } from './InteractiveCalendar'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
 import { 
   Calendar, 
   Plus, 
-  Clock, 
-  ChevronLeft, 
-  ChevronRight,
-  CalendarDays,
-  Filter,
+  Clock,
   CheckSquare,
   Timer,
-  BookOpen,
-  Edit,
-  Trash2
+  BookOpen
 } from 'lucide-react'
 
 interface ScheduleViewProps {
@@ -28,27 +22,16 @@ interface ScheduleViewProps {
 }
 
 export function ScheduleView({ compactMode = false, showHeader = true }: ScheduleViewProps) {
-  const { state, addScheduleEvent, updateScheduleEvent, deleteScheduleEvent } = useStudyPlanner()
+  const { state, addScheduleEvent } = useStudyPlanner()
   
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
   const [showEventModal, setShowEventModal] = useState(false)
-  const [editingEventId, setEditingEventId] = useState<string | null>(null)
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; time: string } | null>(null)
   
   // Study Session Modal state
   const [showSessionModal, setShowSessionModal] = useState(false)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
-  // Generate time slots for day/week view
-  const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const hour = i.toString().padStart(2, '0')
-    return `${hour}:00`
-  })
-
   // Get events for current view
   const getEventsForDate = (date: Date) => {
-    // Create start and end of day in local timezone
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     
@@ -59,30 +42,6 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
       const eventDate = new Date(event.startTime);
       return eventDate >= startOfDay && eventDate <= endOfDay;
     });
-  }
-
-  const getEventsForWeek = () => {
-    const startOfWeek = new Date(currentDate)
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
-    
-    const weekEvents = []
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek)
-      date.setDate(startOfWeek.getDate() + i)
-      weekEvents.push({
-        date: new Date(date),
-        events: getEventsForDate(date)
-      })
-    }
-    return weekEvents
-  }
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    })
   }
 
   const formatTime = (timeString: string) => {
@@ -101,28 +60,6 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
       case 'other': return 'bg-purple-500'
       default: return 'bg-gray-500'
     }
-  }
-
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate)
-    
-    switch (viewMode) {
-      case 'day':
-        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1))
-        break
-      case 'week':
-        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7))
-        break
-      case 'month':
-        newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1))
-        break
-    }
-    
-    setCurrentDate(newDate)
-  }
-
-  const goToToday = () => {
-    setCurrentDate(new Date())
   }
 
   const handleAutoSchedule = () => {
@@ -163,25 +100,7 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
     alert(`Auto-scheduled ${scheduledCount} tasks!`)
   }
 
-  const handleTimeSlotClick = (date: Date, timeSlot: string) => {
-    setSelectedTimeSlot({
-      date: date.toISOString().split('T')[0],
-      time: timeSlot
-    })
-    setShowEventModal(true)
-  }
-
-  const handleEditEvent = (eventId: string) => {
-    setEditingEventId(eventId)
-    setShowEventModal(true)
-  }
-
-  const handleEventModalClose = () => {
-    setShowEventModal(false)
-    setEditingEventId(null)
-    setSelectedTimeSlot(null)
-  }
-
+  // Compact mode - show today's events in a simple list
   if (compactMode) {
     const todayEvents = getEventsForDate(new Date())
     
@@ -238,272 +157,66 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
           
           <ScheduleEventModal
             isOpen={showEventModal}
-            onClose={handleEventModalClose}
-            editingEventId={editingEventId}
-            defaultDate={selectedTimeSlot?.date}
-            defaultTime={selectedTimeSlot?.time}
+            onClose={() => setShowEventModal(false)}
+          />
+          
+          <StudySessionModal
+            isOpen={showSessionModal}
+            onClose={() => {
+              setShowSessionModal(false)
+              setSelectedEventId(null)
+            }}
+            eventId={selectedEventId}
           />
         </CardContent>
       </Card>
     )
   }
 
+  // Full calendar view with interactive features
   return (
     <div className="space-y-4">
       {showHeader && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Schedule</h2>
-            <p className="text-muted-foreground">Plan and organize your study time</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleAutoSchedule}
-              variant="outline"
-              className="bg-gradient-to-r from-green-600 to-blue-600 text-white border-0"
-            >
-              <Timer className="h-4 w-4 mr-2" />
-              Auto Schedule
-            </Button>
-            <Button 
-              onClick={() => setShowEventModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Event
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation and View Controls */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigateDate('prev')}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToToday}
-              >
-                <CalendarDays className="h-4 w-4 mr-1" />
-                Today
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigateDate('next')}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              
-              <h3 className="text-lg font-semibold ml-4">
-                {viewMode === 'month' 
-                  ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                  : viewMode === 'week'
-                  ? `Week of ${formatDate(currentDate)}`
-                  : formatDate(currentDate)
-                }
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Select value={viewMode} onValueChange={(value: 'day' | 'week' | 'month') => setViewMode(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Day</SelectItem>
-                  <SelectItem value="week">Week</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Calendar View */}
-      <Card>
-        <CardContent className="p-0">
-          {viewMode === 'week' && (
-            <div className="grid grid-cols-8 gap-0 border-b">
-              <div className="p-4 border-r bg-muted/30">
-                <p className="text-sm font-medium">Time</p>
-              </div>
-              {getEventsForWeek().map(({ date }, index) => (
-                <div key={index} className="p-4 border-r bg-muted/30 text-center">
-                  <p className="text-sm font-medium">{formatDate(date)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {viewMode === 'week' && (
-            <div className="max-h-96 overflow-y-auto">
-              {timeSlots.slice(6, 22).map(timeSlot => ( // Show 6am to 10pm
-                <div key={timeSlot} className="grid grid-cols-8 gap-0 border-b min-h-[60px]">
-                  <div className="p-2 border-r bg-muted/10 flex items-center">
-                    <p className="text-xs text-muted-foreground">{timeSlot}</p>
-                  </div>
-                  {getEventsForWeek().map(({ date, events }, dayIndex) => {
-                    const dayEvents = events.filter(event => {
-                      const eventHour = new Date(event.startTime).getHours()
-                      const slotHour = parseInt(timeSlot.split(':')[0])
-                      return eventHour === slotHour
-                    })
-
-                    return (
-                      <div 
-                        key={dayIndex} 
-                        className="border-r p-1 hover:bg-muted/20 cursor-pointer"
-                        onClick={() => handleTimeSlotClick(date, timeSlot)}
-                      >
-                        {dayEvents.map(event => (
-                          <div
-                            key={event.id}
-                            className={`relative text-xs p-1 rounded mb-1 text-white ${getEventColor(event.type)} cursor-pointer hover:opacity-80 group`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedEventId(event.id)
-                              setShowSessionModal(true)
-                            }}
-                          >
-                            <p className="font-medium truncate">{event.title}</p>
-                            <p className="opacity-90">{formatTime(event.startTime)}</p>
-                            <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditEvent(event.id)
-                                }}
-                                className="h-4 w-4 p-0 text-white hover:text-blue-300"
-                                title="Edit"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  deleteScheduleEvent(event.id)
-                                }}
-                                className="h-4 w-4 p-0 text-white hover:text-red-300"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {viewMode === 'day' && (
-            <div className="space-y-2 p-4">
-              {getEventsForDate(currentDate).length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">No events scheduled</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add events to organize your day
-                  </p>
-                  <Button 
-                    onClick={() => setShowEventModal(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Event
-                  </Button>
-                </div>
-              ) : (
-                getEventsForDate(currentDate)
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                  .map(event => (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setSelectedEventId(event.id)
-                        setShowSessionModal(true)
-                      }}
-                    >
-                      <div className={`w-4 h-4 rounded-full ${getEventColor(event.type)}`} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{event.title}</h4>
-                          <Badge variant="outline" className="text-xs">
-                            {event.type}
-                          </Badge>
-                        </div>
-                        {event.description && (
-                          <p className="text-sm text-muted-foreground mb-1">
-                            {event.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatTime(event.startTime)} - {formatTime(event.endTime)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditEvent(event.id)}
-                          className="h-8 w-8 p-0"
-                          title="Edit Event"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteScheduleEvent(event.id)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          title="Delete Event"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))
-              )}
-            </div>
-          )}
-
-          {viewMode === 'month' && (
-            <div className="p-4">
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">Month View</h3>
-                <p className="text-muted-foreground">
-                  Month view coming soon! Use day or week view for now.
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Study Planner
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Click to create, drag to move, resize to adjust duration
                 </p>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleAutoSchedule}
+                  variant="outline"
+                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white border-0"
+                >
+                  <Timer className="h-4 w-4 mr-2" />
+                  Auto Schedule
+                </Button>
+                <Button 
+                  onClick={() => setShowEventModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Event
+                </Button>
+              </div>
             </div>
-          )}
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* Interactive Calendar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="min-h-[600px]">
+            <InteractiveCalendar />
+          </div>
         </CardContent>
       </Card>
 
@@ -552,10 +265,7 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
 
       <ScheduleEventModal
         isOpen={showEventModal}
-        onClose={handleEventModalClose}
-        editingEventId={editingEventId}
-        defaultDate={selectedTimeSlot?.date}
-        defaultTime={selectedTimeSlot?.time}
+        onClose={() => setShowEventModal(false)}
       />
       
       <StudySessionModal
@@ -569,3 +279,6 @@ export function ScheduleView({ compactMode = false, showHeader = true }: Schedul
     </div>
   )
 }
+
+// Export for backward compatibility
+export { ScheduleView as DynamicScheduleView }
