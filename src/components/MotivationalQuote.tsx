@@ -40,6 +40,13 @@ export function MotivationalQuote() {
 
   useEffect(() => {
     setQuote(getRandomQuote())
+    
+    // Auto-rotate quotes every 30 seconds
+    const interval = setInterval(() => {
+      setQuote(getRandomQuote())
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   return (

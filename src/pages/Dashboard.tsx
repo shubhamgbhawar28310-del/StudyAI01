@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { DashboardSidebar } from '@/components/DashboardSidebar'
+import { ModernSidebar } from '@/components/ModernSidebar'
+import { Explorer } from '@/pages/Explorer'
 import { TaskManager } from '@/components/features/TaskManager'
 import { FlashcardManager } from '@/components/features/FlashcardManager'
 import { DynamicScheduleView } from '@/components/features/DynamicScheduleView'
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { TaskModal } from '@/components/modals/TaskModal'
+import { FeedbackModal } from '@/components/modals/FeedbackModal'
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator'
 import { DatabaseSetupWarning } from '@/components/DatabaseSetupWarning'
 import { MotivationalQuote } from '@/components/MotivationalQuote'
@@ -30,7 +32,8 @@ import {
   Bot,
   Loader2,
   FolderOpen,
-  Upload
+  Upload,
+  MessageCircle
 } from 'lucide-react'
 
 function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
@@ -101,11 +104,16 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Completion</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    Completion
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.completionRate || 0}%</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">{stats?.completedTasks || 0}/{stats?.totalTasks || 0}</p>
                 </div>
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex-shrink-0" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <Target className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -114,11 +122,16 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Sessions</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    Sessions
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.sessionsToday || 0}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">today</p>
                 </div>
-                <Timer className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent flex-shrink-0" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                  <Timer className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -127,11 +140,16 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Level</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    Level
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.level || 1}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">{stats?.xp || 0} XP</p>
                 </div>
-                <CheckSquare className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent flex-shrink-0" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -140,11 +158,16 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Streak</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                    <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                    Streak
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.currentStreak || 0}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">days</p>
                 </div>
-                <Flame className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent flex-shrink-0" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0">
+                  <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -153,11 +176,16 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Materials</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                    <FolderOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    Materials
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.materialsCount || 0}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">uploaded</p>
                 </div>
-                <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent flex-shrink-0" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <FolderOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -170,50 +198,32 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Button 
               variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-blue-50 text-xs sm:text-sm bg-gradient-to-r from-blue-100 to-purple-100 border-blue-200"
-              onClick={handleAddTask}
-            >
-              <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <span className="text-center leading-tight text-blue-700">Add Task</span>
-            </Button>
-            
-            <Button 
-              variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-indigo-50 text-xs sm:text-sm bg-gradient-to-r from-indigo-100 to-purple-100 border-indigo-200"
-              onClick={handleUploadMaterial}
-            >
-              <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
-              <span className="text-center leading-tight text-indigo-700">Upload Material</span>
-            </Button>
-            
-            <Button 
-              variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-green-50 text-xs sm:text-sm bg-gradient-to-r from-green-100 to-emerald-100 border-green-200"
-              onClick={handleViewProgress}
-            >
-              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-              <span className="text-center leading-tight text-green-700">View Progress</span>
-            </Button>
-
-            <Button 
-              variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-purple-50 text-xs sm:text-sm bg-gradient-to-r from-purple-100 to-pink-100 border-purple-200"
+              className="h-20 sm:h-24 flex flex-col gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/20 text-xs sm:text-sm bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800"
               onClick={handleAIAssistant}
             >
-              <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-              <span className="text-center leading-tight text-purple-700">AI Assistant </span>
+              <Bot className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600 dark:text-purple-400" />
+              <span className="text-center leading-tight text-purple-700 dark:text-purple-300 font-medium">AI Assistant</span>
             </Button>
 
             <Button 
               variant="outline"
-              className="h-16 sm:h-20 flex flex-col gap-2 hover:bg-red-50 text-xs sm:text-sm bg-gradient-to-r from-red-100 to-orange-100 border-red-200"
-              onClick={handlePomodoroTimer}
+              className="h-20 sm:h-24 flex flex-col gap-2 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-xs sm:text-sm bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200 dark:border-blue-800"
+              onClick={() => setActiveTab('study-planner')}
             >
-              <Timer className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
-              <span className="text-center leading-tight text-red-700">Pomodoro Timer </span>
+              <Target className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 dark:text-blue-400" />
+              <span className="text-center leading-tight text-blue-700 dark:text-blue-300 font-medium">Smart Schedule</span>
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="h-20 sm:h-24 flex flex-col gap-2 hover:bg-green-50 dark:hover:bg-green-950/20 text-xs sm:text-sm bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200 dark:border-green-800"
+              onClick={handleViewProgress}
+            >
+              <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-green-600 dark:text-green-400" />
+              <span className="text-center leading-tight text-green-700 dark:text-green-300 font-medium">View Progress</span>
             </Button>
           </div>
         </CardContent>
@@ -269,6 +279,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [musicEnabled, setMusicEnabled] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   
   console.log('Dashboard mounted with activeTab:', activeTab)
   console.log('Dashboard component rendering...')
@@ -277,6 +288,8 @@ export default function Dashboard() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardOverview setActiveTab={setActiveTab} />
+      case 'explorer':
+        return <Explorer setActiveTab={setActiveTab} />
       case 'ai-assistant':
         return <AIAssistant />
       case 'study-planner':
@@ -311,7 +324,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-background">
-      <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <ModernSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 overflow-auto">
         {/* Database Setup Warning */}
         <DatabaseSetupWarning />
@@ -321,12 +334,15 @@ export default function Dashboard() {
           <Button
             onClick={() => setMusicEnabled(!musicEnabled)}
             size="default"
-            variant={musicEnabled ? 'default' : 'outline'}
-            className={musicEnabled ? 'bg-gray-200 dark:bg-gray-700' : ''}
+            className={`${
+              musicEnabled 
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg' 
+                : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md'
+            }`}
             title={musicEnabled ? 'Disable Music' : 'Enable Music'}
           >
             <img 
-              src="/music (1).png" 
+              src="/music (2).png" 
               alt="Music" 
               className="h-5 w-5"
             />
@@ -350,6 +366,24 @@ export default function Dashboard() {
       <FloatingMusicPlayer
         enabled={musicEnabled}
         onClose={() => setMusicEnabled(false)}
+      />
+
+      {/* Floating Feedback Button */}
+      <motion.button
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1, type: 'spring' }}
+        onClick={() => setShowFeedbackModal(true)}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
+        title="Share Feedback"
+      >
+        <MessageCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
+      </motion.button>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
       />
     </div>
   )
