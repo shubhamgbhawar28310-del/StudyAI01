@@ -20,7 +20,8 @@ import { FeedbackModal } from '@/components/modals/FeedbackModal'
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator'
 import { DatabaseSetupWarning } from '@/components/DatabaseSetupWarning'
 import { MotivationalQuote } from '@/components/MotivationalQuote'
-import { fetchDashboardStats, DashboardStats } from '@/services/dashboardStatsService'
+import { useDashboardStats } from '@/hooks/useDashboardStats'
+import { DashboardStatsProvider } from '@/contexts/DashboardStatsContext'
 import { 
   CheckSquare, 
   Timer, 
@@ -40,28 +41,11 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
   const { state, setCurrentPomodoroTask } = useStudyPlanner()
   const { user } = useAuth()
   const [showTaskModal, setShowTaskModal] = useState(false)
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  
+  // Use real-time stats hook
+  const { stats, isInitialLoad, isUpdating } = useDashboardStats(user?.id)
   
   const pendingTasks = state.tasks.filter(t => !t.completed)
-
-  // Fetch dashboard stats from Supabase
-  useEffect(() => {
-    async function loadStats() {
-      if (!user?.id) return
-      
-      setIsLoadingStats(true)
-      const fetchedStats = await fetchDashboardStats(user.id)
-      setStats(fetchedStats)
-      setIsLoadingStats(false)
-    }
-
-    loadStats()
-    
-    // Refresh stats every 30 seconds
-    const interval = setInterval(loadStats, 30000)
-    return () => clearInterval(interval)
-  }, [user?.id])
 
   const handleAddTask = () => {
     setShowTaskModal(true)
@@ -94,13 +78,13 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
       </div>
 
       {/* Quick Stats - Responsive Grid */}
-      {isLoadingStats ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <Card className="min-w-0">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Card className="min-w-0 hover:shadow-lg transition-shadow duration-200">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -108,8 +92,8 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
                     <Target className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                     Completion
                   </p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.completionRate || 0}%</p>
-                  <p className="text-xs text-muted-foreground hidden sm:block">{stats?.completedTasks || 0}/{stats?.totalTasks || 0}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold transition-opacity duration-300">{stats.completionRate}%</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block transition-opacity duration-300">{stats.completedTasks}/{stats.totalTasks}</p>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                   <Target className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -117,8 +101,14 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               </div>
             </CardContent>
           </Card>
+          </motion.div>
 
-          <Card className="min-w-0">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Card className="min-w-0 hover:shadow-lg transition-shadow duration-200">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -126,7 +116,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
                     <Timer className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                     Sessions
                   </p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.sessionsToday || 0}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold transition-opacity duration-300">{stats.sessionsToday}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">today</p>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center flex-shrink-0">
@@ -135,8 +125,14 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               </div>
             </CardContent>
           </Card>
+          </motion.div>
 
-          <Card className="min-w-0">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <Card className="min-w-0 hover:shadow-lg transition-shadow duration-200">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -144,8 +140,8 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
                     <Brain className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                     Level
                   </p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.level || 1}</p>
-                  <p className="text-xs text-muted-foreground hidden sm:block">{stats?.xp || 0} XP</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold transition-opacity duration-300">{stats.level}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block transition-opacity duration-300">{stats.xp} XP</p>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
                   <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -153,8 +149,14 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               </div>
             </CardContent>
           </Card>
+          </motion.div>
 
-          <Card className="min-w-0">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+          >
+            <Card className="min-w-0 hover:shadow-lg transition-shadow duration-200">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -162,7 +164,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
                     <Flame className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
                     Streak
                   </p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.currentStreak || 0}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold transition-opacity duration-300">{stats.currentStreak}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">days</p>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0">
@@ -171,8 +173,15 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               </div>
             </CardContent>
           </Card>
+          </motion.div>
 
-          <Card className="min-w-0 col-span-2 sm:col-span-1">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+            className="col-span-2 sm:col-span-1"
+          >
+            <Card className="min-w-0 hover:shadow-lg transition-shadow duration-200">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -180,7 +189,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
                     <FolderOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                     Materials
                   </p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stats?.materialsCount || 0}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold transition-opacity duration-300">{stats.materialsCount}</p>
                   <p className="text-xs text-muted-foreground hidden sm:block">uploaded</p>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
@@ -189,8 +198,8 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
               </div>
             </CardContent>
           </Card>
+          </motion.div>
         </div>
-      )}
 
       {/* Quick Actions */}
       <Card>
@@ -323,8 +332,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <ModernSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <DashboardStatsProvider>
+      <div className="flex h-screen bg-background">
+        <ModernSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 overflow-auto">
         {/* Database Setup Warning */}
         <DatabaseSetupWarning />
@@ -385,6 +395,7 @@ export default function Dashboard() {
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
       />
-    </div>
+      </div>
+    </DashboardStatsProvider>
   )
 }

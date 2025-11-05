@@ -9,28 +9,28 @@ interface FAQItem {
 
 const faqData: FAQItem[] = [
   {
-    question: "How does the AI analyze my study materials?",
-    answer: "Our AI uses advanced natural language processing to extract text from PDFs, images, and documents. It then categorizes content by topics, identifies key concepts, and creates structured summaries to help you understand and organize your materials effectively."
+    question: "How does the AI analyze my notes?",
+    answer: "We use AI to extract text from PDFs, images, and docs—then organize everything by topic and key concepts. Think of it as turning messy notes into clean, searchable knowledge."
   },
   {
     question: "Can I customize my study schedule?",
-    answer: "Absolutely! While our AI creates an optimized schedule based on your materials and deadlines, you can easily adjust timing, mark topics by difficulty level, and set your preferred study hours. The AI learns from your preferences to improve future recommendations."
+    answer: "Yes! The AI builds a schedule based on your deadlines and difficulty levels, but you can adjust timing and preferences anytime. It learns from your habits to improve future plans."
   },
   {
-    question: "What file formats are supported for upload?",
-    answer: "We support a wide range of formats including PDF, DOC, DOCX, JPG, PNG, TXT, and many more. Our AI can extract text from images and handwritten notes, making it easy to digitize all your study materials in one place."
+    question: "What file formats can I upload?",
+    answer: "PDF, DOC, DOCX, JPG, PNG, TXT, and more. We can even extract text from handwritten notes and scanned images."
   },
   {
-    question: "How does the gamification system work?",
-    answer: "You earn XP points for completing study sessions, maintaining streaks, and achieving goals. The system tracks your progress and rewards consistency, helping you stay motivated throughout your learning journey. You can view your achievements and compare progress over time."
+    question: "How does the streak system work?",
+    answer: "Complete study sessions to earn XP and build streaks. It's about consistency, not perfection—small wins add up over time."
   },
   {
-    question: "Is my data secure and private?",
-    answer: "Yes, we take data security seriously. All your files and personal information are encrypted and stored securely. We never share your study materials or personal data with third parties. You can delete your data at any time."
+    question: "Is my data private and secure?",
+    answer: "Absolutely. All files are encrypted and stored securely. We never share your materials or personal data. You can delete everything anytime."
   },
   {
-    question: "Can I use this for team or group study?",
-    answer: "Currently, our platform is designed for individual study planning. However, we're working on collaborative features that will allow study groups to share materials and coordinate schedules. This feature will be available in a future update."
+    question: "Who built StudyAI?",
+    answer: "A student who spent too many late nights juggling messy notes, endless to-do lists, and burnout. I built StudyAI because I needed it—and realized thousands of others did too. It's not a corporate product. It's built by someone who's been exactly where you are."
   }
 ];
 
@@ -47,11 +47,11 @@ const FaqSection = () => {
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-              Frequently Asked Questions
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground mb-4">
+              Questions? We've got answers
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to know about AI Study Planner and how it can transform your learning experience.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              Everything you need to know about StudyAI and how it helps you study smarter.
             </p>
           </div>
 
@@ -98,12 +98,12 @@ const FaqSection = () => {
           {/* Contact CTA */}
           <div className="text-center mt-12">
             <p className="text-muted-foreground">
-              Didn't find the answer you're looking for?{" "}
+              Still have questions?{" "}
               <a
                 href="#contact"
                 className="font-medium text-primary hover:text-primary/80 transition-colors duration-200 underline underline-offset-2"
               >
-                Contact our support team
+                Reach out—we're here to help
               </a>
             </p>
           </div>

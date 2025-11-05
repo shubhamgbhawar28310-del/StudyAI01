@@ -17,19 +17,19 @@ const CtaSection = () => {
           </div>
           
           {/* Headline */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-            Ready to Study{" "}
-            <span className="ai-gradient-text">Smarter?</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-6">
+            Built for students who{" "}
+            <span className="ai-gradient-text">dream big</span> — by someone who's been there.
           </h2>
           
           {/* Sub-headline */}
-          <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of students transforming the way they learn with AI-powered study planning.
+          <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Study smarter, stay consistent, and let AI do the heavy lifting. Start free and see the difference.
           </p>
           
           {/* CTA Button */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Button size="lg" className="ai-gradient text-white font-semibold px-8 py-4 text-lg ai-glow-soft hover:ai-glow transition-all duration-300 transform hover:scale-105 group">
+            <Button size="lg" className="ai-gradient text-white font-semibold px-8 py-4 text-lg ai-glow-soft hover:ai-glow transition-all duration-300 transform hover:scale-105 hover:shadow-lg group">
               Get Started for Free
               <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>

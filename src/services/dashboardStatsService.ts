@@ -16,6 +16,8 @@ export interface DashboardStats {
  */
 export async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   try {
+    console.log('Fetching dashboard stats for user:', userId);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
@@ -26,13 +28,21 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
       .select('id, completed')
       .eq('user_id', userId);
 
-    if (tasksError) throw tasksError;
+    if (tasksError) {
+      console.error('Error fetching tasks:', tasksError);
+      throw tasksError;
+    }
+
+    console.log('Tasks fetched:', tasks?.length || 0);
 
     const totalTasks = tasks?.length || 0;
     const completedTasks = tasks?.filter(t => t.completed).length || 0;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Fetch study sessions for today
+    // Fetch study sessions for today (try pomodoro_sessions if study_sessions doesn't exist)
+    let sessionsToday = 0;
+    
+    // Try study_sessions first
     const { data: sessions, error: sessionsError } = await supabase
       .from('study_sessions')
       .select('id, completed')
@@ -40,9 +50,24 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
       .gte('created_at', todayISO)
       .eq('completed', true);
 
-    if (sessionsError) throw sessionsError;
+    if (sessionsError) {
+      console.warn('study_sessions table not found, trying pomodoro_sessions:', sessionsError);
+      
+      // Try pomodoro_sessions as fallback
+      const { data: pomodoroSessions, error: pomodoroError } = await supabase
+        .from('pomodoro_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('created_at', todayISO);
+      
+      if (!pomodoroError && pomodoroSessions) {
+        sessionsToday = pomodoroSessions.length;
+      }
+    } else {
+      sessionsToday = sessions?.length || 0;
+    }
 
-    const sessionsToday = sessions?.length || 0;
+    console.log('Sessions today:', sessionsToday);
 
     // Fetch XP and calculate level
     const { data: xpData, error: xpError } = await supabase
@@ -51,25 +76,31 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
       .eq('user_id', userId)
       .single();
 
-    if (xpError && xpError.code !== 'PGRST116') throw xpError; // PGRST116 = no rows
+    if (xpError && xpError.code !== 'PGRST116') {
+      console.warn('user_xp table error:', xpError);
+    }
 
     const xp = xpData?.total_xp || 0;
     const level = calculateLevel(xp);
+    
+    console.log('XP:', xp, 'Level:', level);
 
     // Fetch streak (consecutive days with at least 1 session)
     const streak = await calculateStreak(userId);
 
     // Fetch materials count
-    const { data: materials, error: materialsError } = await supabase
+    const { count: materialsCount, error: materialsError } = await supabase
       .from('materials')
-      .select('id', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
 
-    if (materialsError) throw materialsError;
+    if (materialsError) {
+      console.warn('materials table error:', materialsError);
+    }
 
-    const materialsCount = materials || 0;
+    console.log('Materials count:', materialsCount || 0);
 
-    return {
+    const finalStats = {
       completionRate,
       completedTasks,
       totalTasks,
@@ -77,8 +108,12 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
       level,
       xp,
       currentStreak: streak,
-      materialsCount,
+      materialsCount: materialsCount || 0,
     };
+
+    console.log('Final stats:', finalStats);
+
+    return finalStats;
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     // Return default values on error
@@ -115,7 +150,10 @@ async function calculateStreak(userId: string): Promise<number> {
       .eq('completed', true)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.warn('Error calculating streak (study_sessions not found):', error);
+      return 0;
+    }
     if (!sessions || sessions.length === 0) return 0;
 
     let streak = 0;

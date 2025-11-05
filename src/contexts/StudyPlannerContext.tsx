@@ -766,6 +766,9 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
     }
     dispatch({ type: 'ADD_TASK', payload: task })
     
+    // Emit event for dashboard stats
+    window.dispatchEvent(new CustomEvent('task-added'))
+    
     // Sync to Supabase
     if (user) {
       dataSyncService.syncTask(task, user.id, 'insert').catch(console.error)
@@ -786,7 +789,14 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
 
   const deleteTask = (id: string) => {
     const task = state.tasks.find(t => t.id === id)
+    const wasCompleted = task?.completed || false
+    
     dispatch({ type: 'DELETE_TASK', payload: id })
+    
+    // Emit event for dashboard stats
+    window.dispatchEvent(new CustomEvent('task-deleted', { 
+      detail: { wasCompleted } 
+    }))
     
     // Sync to Supabase
     if (user && task) {
@@ -795,10 +805,17 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
   }
 
   const toggleTask = (id: string) => {
+    const task = state.tasks.find(t => t.id === id)
+    const wasCompleted = task?.completed || false
+    
     dispatch({ type: 'TOGGLE_TASK', payload: id })
     
+    // Emit event for dashboard stats to update optimistically
+    window.dispatchEvent(new CustomEvent('task-toggled', { 
+      detail: { completed: !wasCompleted } 
+    }))
+    
     // Sync to Supabase after toggle
-    const task = state.tasks.find(t => t.id === id)
     if (user && task) {
       const updatedTask = { ...task, completed: !task.completed, updatedAt: new Date().toISOString() }
       dataSyncService.syncTask(updatedTask, user.id, 'update').catch(console.error)

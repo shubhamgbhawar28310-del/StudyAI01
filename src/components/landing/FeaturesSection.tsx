@@ -1,46 +1,46 @@
 import { Upload, Calendar, Target, Timer, BarChart3, Zap, MessageSquare, Cloud, Sparkles, Music } from "lucide-react";
 const FeaturesSection = () => {
-  return <div className="py-20 bg-background">
+  return <div id="features" className="py-20">
       {/* Smart Uploads Section */}
-      <section id="how-it-works" className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
+      <section id="how-it-works" className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32 py-16 bg-gradient-to-b from-background to-ai-soft/20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="scroll-reveal">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
               <Upload className="w-4 h-4 mr-2" />
               Smart Uploads
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              AI-Powered Notes
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+              Upload once. Study anywhere.
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Stop searching across PDFs and drives. Simply upload your scattered notes—PDFs, 
-              images, or docs—and our system automatically extracts the text and organizes 
-              everything intelligently.
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              Scattered PDFs, scanned notes, Google Docs—upload anything. Our AI extracts the text, 
+              organizes by topic, and makes everything searchable. Your notes become clean, structured, 
+              and ready for AI.
             </p>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Automatic text extraction from any format</span>
+                <span className="text-foreground font-medium">Upload PDFs, images, or docs—we handle the rest</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Smart categorization and tagging</span>
+                <span className="text-foreground font-medium">Smart categorization by topics and subjects</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Access anywhere, anytime</span>
+                <span className="text-foreground font-medium">Access your notes from any device, anytime</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Generate summaries and mind maps</span>
+                <span className="text-foreground font-medium">AI-generated summaries and concept maps</span>
               </div>
             </div>
           </div>
@@ -77,41 +77,41 @@ const FeaturesSection = () => {
       </section>
 
       {/* AI Assistant Section */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32 py-16 bg-gradient-to-b from-ai-soft/20 to-background">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="scroll-reveal lg:order-2">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
               <MessageSquare className="w-4 h-4 mr-2" />
               AI Assistant
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Fully Functional AI Assistant
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+              Your AI tutor, connected to your notes
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">Get instant help with anything—just like any AI. Ask questions, brainstorm ideas, solve problems, write content, and more. Plus, it has direct access to all your study materials.</p>
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">Ask anything—from explaining tough concepts to writing essays. The AI knows your materials, so it gives context-aware answers. Like having a tutor who's already read everything you uploaded.</p>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Complete AI assistant for any task or question</span>
+                <span className="text-foreground font-medium">Explain concepts using your uploaded notes</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Write, brainstorm, solve problems, and create content</span>
+                <span className="text-foreground font-medium">Generate practice problems and essay outlines</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Direct access to your uploaded study materials</span>
+                <span className="text-foreground font-medium">Context-aware learning—AI knows your materials</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Available 24/7 with instant responses</span>
+                <span className="text-foreground font-medium">Available 24/7, instant answers</span>
               </div>
             </div>
           </div>
@@ -153,12 +153,12 @@ const FeaturesSection = () => {
             <Cloud className="w-4 h-4 mr-2" />
             Everything In One Place
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            All Your Study Tools, Unified
+          <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+            One workspace for studying smarter
           </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            No more switching between apps. StudyAI brings together notes, schedules, AI assistance, 
-            and analytics in one powerful platform accessible from anywhere.
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Stop juggling Google Drive, Notion, and calendar apps. StudyAI unifies your notes, schedule, 
+            AI tutor, and progress tracking in one seamless platform.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
@@ -168,58 +168,58 @@ const FeaturesSection = () => {
             </div>
             <h3 className="text-xl font-bold text-foreground mb-3">Cloud Storage</h3>
             <p className="text-muted-foreground">
-              Upload once, access everywhere. Your materials sync across all devices automatically.
+              Upload once, access anywhere. Your materials sync automatically across all devices.
             </p>
           </div>
           <div className="scroll-reveal bg-white rounded-xl shadow-lg border border-border p-6 ai-glow-soft">
             <div className="w-12 h-12 ai-gradient rounded-lg flex items-center justify-center mb-4">
               <MessageSquare className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-3">AI Assistant</h3>
+            <h3 className="text-xl font-bold text-foreground mb-3">AI Tutor</h3>
             <p className="text-muted-foreground">
-              Chat with AI trained on your materials. Get help instantly, anytime you need it.
+              Ask questions, get explanations, and study smarter with AI that knows your notes.
             </p>
           </div>
           <div className="scroll-reveal bg-white rounded-xl shadow-lg border border-border p-6 ai-glow-soft">
             <div className="w-12 h-12 ai-gradient rounded-lg flex items-center justify-center mb-4">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-3">Smart Planning</h3>
+            <h3 className="text-xl font-bold text-foreground mb-3">Smart Scheduling</h3>
             <p className="text-muted-foreground">
-              Automated schedules, progress tracking, and gamification all work together seamlessly.
+              AI-generated study plans, Pomodoro timers, and streak tracking—all in one place.
             </p>
           </div>
         </div>
       </section>
 
       {/* Study Planning Section */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32 py-16 bg-gradient-to-b from-ai-soft/20 to-background">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="scroll-reveal lg:order-2">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
               <Calendar className="w-4 h-4 mr-2" />
               Smart Scheduling
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              A Schedule That Works For You
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+              AI builds a schedule that adapts to you
             </h2>
             <div className="space-y-6">
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Schedule + Notes Integration</h3>
-                <p className="text-muted-foreground">
-                  Link your notes to your plan and let our AI build your schedule based on your topics and deadlines.
+                <h3 className="text-xl font-semibold text-foreground mb-2">Personalized Study Plans</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Link your notes to deadlines. The AI creates a schedule based on your energy, focus time, and what's hardest.
                 </p>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Difficulty-based Planning</h3>
-                <p className="text-muted-foreground">
-                  Mark topics as Easy, Medium, or Hard, and the AI will allocate more time where you need it most.
+                <h3 className="text-xl font-semibold text-foreground mb-2">Difficulty-Based Time Allocation</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Mark topics as Easy, Medium, or Hard—AI gives you more time where you need it most.
                 </p>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Gamification</h3>
-                <p className="text-muted-foreground">
-                  Stay motivated with streaks and XP points for every task you complete.
+                <h3 className="text-xl font-semibold text-foreground mb-2">Streaks & Motivation</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Earn XP for every completed session. Build streaks to stay consistent. Let the AI handle planning—you just show up.
                 </p>
               </div>
             </div>
@@ -287,26 +287,26 @@ const FeaturesSection = () => {
               <Target className="w-4 h-4 mr-2" />
               Advanced Features
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Beyond the Plan
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+              See how far you've come
             </h2>
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-semibold text-foreground mb-2 flex items-center">
                   <Timer className="w-5 h-5 mr-2 text-primary" />
-                  Smart Reminders & Pomodoro
+                  Pomodoro Focus Sessions
                 </h3>
-                <p className="text-muted-foreground">
-                  Focus with integrated Pomodoro timers linked directly to your study topics.
+                <p className="text-gray-600 leading-relaxed">
+                  Integrated timers linked to your study topics. Stay focused, take breaks, repeat.
                 </p>
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-foreground mb-2 flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2 text-primary" />
-                  Progress Analytics
+                  Progress Dashboard
                 </h3>
-                <p className="text-muted-foreground">
-                  Track your progress with a personalized dashboard showing daily hours and topic completion.
+                <p className="text-gray-600 leading-relaxed">
+                  Track study hours, topic completion, and streaks. Celebrate consistency, not perfection.
                 </p>
               </div>
             </div>
@@ -355,44 +355,44 @@ const FeaturesSection = () => {
       </section>
 
       {/* Focus Music Section */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gradient-to-b from-ai-soft/20 to-background">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="scroll-reveal lg:order-2">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-ai-soft text-primary font-medium text-sm mb-6">
               <Music className="w-4 h-4 mr-2" />
               Focus Music
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Stay In The Zone
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
+              Get in your zone
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Enhance your concentration with curated focus music and ambient sounds. Research shows that 
-              background music can help block distractions and create a peaceful work environment.
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              Block distractions with curated focus music and ambient sounds. A floating player keeps your 
+              playlist accessible during Pomodoro sessions—so you stay peaceful and productive.
             </p>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Curated playlists optimized for studying</span>
+                <span className="text-foreground font-medium">Curated study playlists and ambient sounds</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Floating player accessible during sessions</span>
+                <span className="text-foreground font-medium">Floating player that stays with you</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Instrumental and ambient sound options</span>
+                <span className="text-foreground font-medium">Seamless Pomodoro timer integration</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Seamless integration with Pomodoro timers</span>
+                <span className="text-foreground font-medium">Study peacefully without switching apps</span>
               </div>
             </div>
           </div>

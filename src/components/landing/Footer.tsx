@@ -1,5 +1,4 @@
 import { Github, Twitter, Linkedin, Mail, GraduationCap } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -24,9 +23,11 @@ const Footer = () => {
                 StudyAI
               </span>
             </div>
-            <p className="text-background/70 mb-6 max-w-md">
-              Transform your learning experience with AI-powered study planning. 
-              Organize your notes, create smart schedules, and achieve your academic goals.
+            <p className="text-background/70 mb-4 max-w-md">
+              Focus on learning, not organizing. AI-powered study planning for students who dream big.
+            </p>
+            <p className="text-background/60 text-sm mb-6 max-w-md">
+              Made by students, for students. Built with ❤️ in India.
             </p>
             <div className="flex space-x-4">
               <a
@@ -117,9 +118,9 @@ const Footer = () => {
             © {currentYear} StudyAI. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 sm:mt-0">
-            <Link to="/privacy-policy" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
+            <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Privacy Policy
-            </Link>
+            </a>
             <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Terms of Service
             </a>
