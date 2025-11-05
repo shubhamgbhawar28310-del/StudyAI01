@@ -27,7 +27,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptClick }) =
           <GraduationCap className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Welcome to StudyAI
+          Welcome to Aivy
         </h1>
         <p className="text-lg text-muted-foreground max-w-md">
           Your intelligent study companion. Ask me anything about your studies, and I'll help you succeed!

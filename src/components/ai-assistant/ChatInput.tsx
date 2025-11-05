@@ -320,7 +320,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Message StudyAI..."
+              placeholder="Message Aivy..."
               className="w-full bg-transparent border-none focus:ring-0 resize-none placeholder-muted-foreground text-sm leading-6"
               rows={1}
               disabled={disabled}

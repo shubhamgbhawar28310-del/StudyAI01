@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const CtaSection = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="relative py-20 overflow-hidden">
       {/* Background Effects */}
@@ -29,7 +32,11 @@ const CtaSection = () => {
           
           {/* CTA Button */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Button size="lg" className="ai-gradient text-white font-semibold px-8 py-4 text-lg ai-glow-soft hover:ai-glow transition-all duration-300 transform hover:scale-105 hover:shadow-lg group">
+            <Button 
+              size="lg" 
+              className="ai-gradient text-white font-semibold px-8 py-4 text-lg ai-glow-soft hover:ai-glow transition-all duration-300 transform hover:scale-105 hover:shadow-lg group"
+              onClick={() => navigate('/signup')}
+            >
               Get Started for Free
               <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>

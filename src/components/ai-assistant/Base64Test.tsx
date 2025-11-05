@@ -4,7 +4,7 @@ export function Base64Test() {
   const testBase64 = () => {
     try {
       // Test string
-      const testString = "This is a test file for verifying file upload and preview functionality in StudyAI.";
+      const testString = "This is a test file for verifying file upload and preview functionality in Aivy.";
       const encoded = btoa(testString);
       const decoded = atob(encoded);
       

@@ -12,6 +12,7 @@ import { useTheme } from '@/components/theme-provider'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { NotificationSettings } from '@/components/settings/NotificationSettings'
+import { GoogleCalendarSettings } from '@/components/settings/GoogleCalendarSettings'
 import {
   getUserSettings,
   upsertUserSettings,
@@ -218,7 +219,7 @@ export function Settings() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `studyai-data-${new Date().toISOString().split('T')[0]}.json`
+      a.download = `Aivy-data-${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -459,7 +460,7 @@ export function Settings() {
             Appearance
           </CardTitle>
           <CardDescription>
-            Customize how StudyAI looks and feels
+            Customize how Aivy looks and feels
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -619,7 +620,7 @@ export function Settings() {
       {/* Notifications Section - Enhanced Component */}
       <NotificationSettings />
 
-      {/* Privacy & Security Section */}
+      {/* Google Calendar In Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

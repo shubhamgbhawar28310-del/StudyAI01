@@ -93,12 +93,12 @@ declare global {
   }
 }
 
-interface StudyAIAssistantProps {
+interface AivyAssistantProps {
   compactMode?: boolean;
   showHeader?: boolean;
 }
 
-export function StudyAIAssistant({ compactMode = false, showHeader = true }: StudyAIAssistantProps) {
+export function AivyAssistant({ compactMode = false, showHeader = true }: AivyAssistantProps) {
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -311,7 +311,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    console.log("StudyAIAssistant: Processing", files.length, "files");
+    console.log("AivyAssistant: Processing", files.length, "files");
     
     const filePromises = Array.from(files).map((file: File) => 
       new Promise<Attachment | null>((resolve, reject) => {
@@ -320,7 +320,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
         reader.onload = async (event) => {
           try {
             if (!event.target?.result) {
-              console.warn(`StudyAIAssistant: No result for file: ${file.name}`);
+              console.warn(`AivyAssistant: No result for file: ${file.name}`);
               return resolve(null);
             }
             
@@ -341,25 +341,25 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
               content = event.target.result as string;
             }
             
-            console.log("StudyAIAssistant: Processed file", file.name, "with content length", content.length);
+            console.log("AivyAssistant: Processed file", file.name, "with content length", content.length);
             
             // Generate better extracted text based on file type
             let extractedText = '';
             if (file.type.startsWith('image/')) {
               extractedText = `Image file: ${file.name} (${file.type})\nThis is an image file. For detailed analysis, please ask specific questions about what you expect to see in this image.`;
             } else if (file.type === 'application/pdf') {
-              console.log(`StudyAIAssistant: Processing PDF: ${file.name}`);
+              console.log(`AivyAssistant: Processing PDF: ${file.name}`);
               // For PDF files, we'll let the backend handle the text extraction
               extractedText = `PDF File: ${file.name} (${file.type})\n\nThis is a PDF document that requires server-side text extraction for detailed analysis.`;
             } else if (file.type.includes('presentation') || file.type.includes('powerpoint') || 
                       file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
               // Handle PowerPoint files with better description
-              console.log(`StudyAIAssistant: Processing PowerPoint: ${file.name}`);
+              console.log(`AivyAssistant: Processing PowerPoint: ${file.name}`);
               // For PPTX files, we'll let the backend handle the text extraction
               extractedText = `PowerPoint Presentation File: ${file.name} (${file.type})\n\nThis is a presentation file that requires server-side text extraction for detailed analysis.`;
             } else if (file.type.includes('word') || file.type.includes('document') ||
                       file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
-              console.log(`StudyAIAssistant: Processing Word Document: ${file.name}`);
+              console.log(`AivyAssistant: Processing Word Document: ${file.name}`);
               // For DOCX files, we'll let the backend handle the text extraction
               extractedText = `Word Document File: ${file.name} (${file.type})\n\nThis is a word processing document that requires server-side text extraction for detailed analysis.`;
             } else if (file.type.includes('spreadsheet') || file.type.includes('excel') ||
@@ -379,16 +379,16 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
               extractedText: extractedText
             };
             
-            console.log("StudyAIAssistant: Created attachment for", file.name);
+            console.log("AivyAssistant: Created attachment for", file.name);
             resolve(attachment);
           } catch(err) {
-            console.error(`StudyAIAssistant: Error processing file ${file.name}:`, err);
+            console.error(`AivyAssistant: Error processing file ${file.name}:`, err);
             resolve(null);
           }
         };
 
         reader.onerror = (err) => {
-          console.error("StudyAIAssistant: FileReader error:", err);
+          console.error("AivyAssistant: FileReader error:", err);
           reject(err);
         };
 
@@ -400,13 +400,13 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
             file.name.endsWith('.xls') || file.name.endsWith('.xlsx') ||
             file.type.includes('word') || file.type.includes('document') ||
             file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
-          console.log("StudyAIAssistant: Reading", file.name, "as ArrayBuffer");
+          console.log("AivyAssistant: Reading", file.name, "as ArrayBuffer");
           reader.readAsArrayBuffer(file);
         } else if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
-          console.log("StudyAIAssistant: Reading", file.name, "as text");
+          console.log("AivyAssistant: Reading", file.name, "as text");
           reader.readAsText(file);
         } else {
-          console.log("StudyAIAssistant: Reading", file.name, "as data URL");
+          console.log("AivyAssistant: Reading", file.name, "as data URL");
           reader.readAsDataURL(file);
         }
       })
@@ -416,7 +416,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
       const results = await Promise.all(filePromises);
       const validAttachments = results.filter((att): att is Attachment => att !== null);
       
-      console.log("StudyAIAssistant: Processed", validAttachments.length, "valid attachments");
+      console.log("AivyAssistant: Processed", validAttachments.length, "valid attachments");
       
       // Add new attachments to existing ones instead of replacing
       setAttachments(prev => [...prev, ...validAttachments]);
@@ -427,7 +427,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
         // Just update the UI to show the attachments
       }
     } catch(err) {
-      console.error('StudyAIAssistant: Failed to process one or more files.', err);
+      console.error('AivyAssistant: Failed to process one or more files.', err);
       alert('Error processing files. Please try again.');
     }
 
@@ -587,7 +587,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
               <GraduationCap className="text-white" size={24} />
             </div>
             <div>
-              <h1 className="text-lg font-bold">StudyAI</h1>
+              <h1 className="text-lg font-bold">Aivy</h1>
               <p className="text-xs text-muted-foreground">Your Learning Companion</p>
             </div>
           </div>
@@ -727,7 +727,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-4">
                   <Bot className="text-white" size={32} />
                 </div>
-                <h1 className="text-3xl font-bold text-foreground mb-3">Welcome to StudyAI</h1>
+                <h1 className="text-3xl font-bold text-foreground mb-3">Welcome to Aivy</h1>
                 <p className="text-base text-muted-foreground max-w-2xl mx-auto">
                   Your intelligent study companion is here to help you learn, understand, and excel in your academic journey.
                 </p>
@@ -948,7 +948,7 @@ export function StudyAIAssistant({ compactMode = false, showHeader = true }: Stu
               </div>
             </div>
             <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              <p>StudyAI can make mistakes. Always verify important information.</p>
+              <p>Aivy can make mistakes. Always verify important information.</p>
               <div className="flex items-center gap-3">
                 <button className="hover:text-foreground text-xs">Privacy Policy</button>
                 <p className="text-xs">Powered by Advanced AI</p>

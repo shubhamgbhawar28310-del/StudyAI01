@@ -29,8 +29,8 @@ const faqData: FAQItem[] = [
     answer: "Absolutely. All files are encrypted and stored securely. We never share your materials or personal data. You can delete everything anytime."
   },
   {
-    question: "Who built StudyAI?",
-    answer: "A student who spent too many late nights juggling messy notes, endless to-do lists, and burnout. I built StudyAI because I needed it—and realized thousands of others did too. It's not a corporate product. It's built by someone who's been exactly where you are."
+    question: "Who built Aivy?",
+    answer: "A student who spent too many late nights juggling messy notes, endless to-do lists, and burnout. I built Aivy because I needed it—and realized thousands of others did too. It's not a corporate product. It's built by someone who's been exactly where you are."
   }
 ];
 
@@ -51,7 +51,7 @@ const FaqSection = () => {
               Questions? We've got answers
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              Everything you need to know about StudyAI and how it helps you study smarter.
+              Everything you need to know about Aivy and how it helps you study smarter.
             </p>
           </div>
 

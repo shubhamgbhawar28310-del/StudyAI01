@@ -146,12 +146,10 @@ export function ModernSidebar({ activeTab, setActiveTab }: ModernSidebarProps) {
                 }
               }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+              <img src="/aivyapp1.png" alt="Aivy Logo" className="w-[32px] h-[32px] object-contain" />
               {!isCollapsed && (
-                <h2 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  StudyAI
+                <h2 className="font-bold text-[20px] text-gray-900 dark:text-white leading-none">
+                  Aivy
                 </h2>
               )}
             </div>

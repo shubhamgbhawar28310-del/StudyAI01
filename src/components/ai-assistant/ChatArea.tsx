@@ -47,7 +47,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         <div className="max-w-3xl mx-auto px-4 py-4">
           <ChatInput onSendMessage={onSendMessage} disabled={isLoading} />
           <p className="text-xs text-center text-muted-foreground mt-3">
-            StudyAI can make mistakes. Consider checking important information.
+            Aivy can make mistakes. Consider checking important information.
           </p>
         </div>
       </div>

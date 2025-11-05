@@ -70,7 +70,7 @@ function DashboardOverview({ setActiveTab }: { setActiveTab: (tab: string) => vo
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome back to <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">StudyAI</span>! 👋</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome back to <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Aivy</span>! 👋</h1>
         <p className="text-muted-foreground">Here's your study overview for today</p>
         
         {/* Motivational Quote */}

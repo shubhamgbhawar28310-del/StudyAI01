@@ -27,7 +27,7 @@ const Login = () => {
     
     return () => {
       // Restore previous theme when leaving
-      const savedTheme = localStorage.getItem('studyai-theme');
+      const savedTheme = localStorage.getItem('Aivy-theme');
       if (savedTheme === 'dark') {
         root.classList.add('dark');
       }

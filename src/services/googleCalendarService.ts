@@ -195,7 +195,7 @@ export const googleCalendarService = {
   async syncStudySession(userId: string, session: any) {
     const event: GoogleCalendarEvent = {
       summary: `📚 ${session.title}`,
-      description: session.description || 'Study session from StudyAI',
+      description: session.description || 'Study session from Aivy',
       start: {
         dateTime: new Date(session.start_time).toISOString(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -223,7 +223,7 @@ export const googleCalendarService = {
   async syncTaskDeadline(userId: string, task: any) {
     const event: GoogleCalendarEvent = {
       summary: `✅ ${task.title}`,
-      description: task.description || 'Task deadline from StudyAI',
+      description: task.description || 'Task deadline from Aivy',
       start: {
         dateTime: new Date(task.deadline).toISOString(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -251,15 +251,78 @@ export const googleCalendarService = {
   // Batch sync all unsynced events
   async syncAllEvents(userId: string) {
     try {
+      console.log('🔄 Starting batch sync for user:', userId);
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-batch-sync', {
         body: { userId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Batch sync error:', error);
+        throw error;
+      }
 
+      console.log('✅ Batch sync completed:', data);
       return data;
     } catch (error) {
       console.error('Error syncing all events:', error);
+      throw error;
+    }
+  },
+
+  // Get sync status for user
+  async getSyncStatus(userId: string) {
+    try {
+      const { data: scheduleEvents, error: scheduleError } = await supabase
+        .from('schedule_events')
+        .select('id, synced_to_google, google_event_id')
+        .eq('user_id', userId);
+
+      if (scheduleError) throw scheduleError;
+
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, synced_to_google, google_event_id')
+        .eq('user_id', userId)
+        .not('deadline', 'is', null);
+
+      if (tasksError) throw tasksError;
+
+      const { data: queueItems, error: queueError } = await supabase
+        .from('google_calendar_sync_queue')
+        .select('status')
+        .eq('user_id', userId);
+
+      if (queueError) throw queueError;
+
+      const syncedEvents = scheduleEvents?.filter(e => e.synced_to_google && e.google_event_id).length || 0;
+      const unsyncedEvents = scheduleEvents?.filter(e => !e.synced_to_google || !e.google_event_id).length || 0;
+      const syncedTasks = tasks?.filter(t => t.synced_to_google && t.google_event_id).length || 0;
+      const unsyncedTasks = tasks?.filter(t => !t.synced_to_google || !t.google_event_id).length || 0;
+      const pendingInQueue = queueItems?.filter(q => q.status === 'pending').length || 0;
+      const processingInQueue = queueItems?.filter(q => q.status === 'processing').length || 0;
+
+      return {
+        scheduleEvents: {
+          synced: syncedEvents,
+          unsynced: unsyncedEvents,
+          total: scheduleEvents?.length || 0,
+        },
+        tasks: {
+          synced: syncedTasks,
+          unsynced: unsyncedTasks,
+          total: tasks?.length || 0,
+        },
+        queue: {
+          pending: pendingInQueue,
+          processing: processingInQueue,
+          total: queueItems?.length || 0,
+        },
+        totalSynced: syncedEvents + syncedTasks,
+        totalUnsynced: unsyncedEvents + unsyncedTasks,
+      };
+    } catch (error) {
+      console.error('Error getting sync status:', error);
       throw error;
     }
   }

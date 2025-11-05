@@ -23,7 +23,7 @@ const queryClient = new QueryClient();
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="studyai-theme">
+      <ThemeProvider defaultTheme="system" storageKey="Aivy-theme">
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>

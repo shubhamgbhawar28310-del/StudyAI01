@@ -11,7 +11,7 @@ const LandingPage = () => {
   useScrollReveal();
 
   useEffect(() => {
-    document.title = "StudyAI - Your Notes. Your Plan. Your Success.";
+    document.title = "Aivy - Your Notes. Your Plan. Your Success.";
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {

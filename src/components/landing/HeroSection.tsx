@@ -19,22 +19,28 @@ const HeroSection = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-snug sm:leading-tight lg:leading-[1.1] tracking-tight text-neutral-900 dark:text-neutral-100 mb-6 animate-slide-up">
+     <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-snug sm:leading-tight lg:leading-[1.1] tracking-tight text-neutral-900 dark:text-neutral-100 mb-6 animate-slide-up relative">
   <span className="relative inline-block">
-    <span className="absolute inset-0 bg-gradient-to-r from-blue-500/80 to-violet-500/80 blur-lg opacity-25"></span>
+    {/* Subtle shifted glow */}
+    <span
+      className="absolute inset-0 bg-gradient-to-r from-blue-500/60 to-violet-500/60 blur-[100px] opacity-20 translate-y-6"
+      aria-hidden="true"
+    ></span>
+    {/* Gradient text */}
     <span className="relative bg-gradient-to-r from-blue-500 to-violet-600 bg-clip-text text-transparent animate-gradient-move">
-      Focus on learning.
+      You focus on learning.
     </span>
   </span>{" "}
   <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-    Let AI handle the rest.
+    Aivy handles the rest.
   </span>
 </h1>
 
 
+
           {/* Sub-headline */}
           <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            Your notes, schedule, and focus tools in one place. StudyAI handles the planning so you can show up and study.
+            All your notes, schedule, and study tools in one smart workspace - so you can stop organizing and start learning.
           </p>
 
           {/* CTA Buttons */}

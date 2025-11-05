@@ -1,4 +1,4 @@
-export { StudyAIAssistant as AIAssistant } from '@/components/ai-assistant/StudyAIAssistant'
+export { AivyAssistant as AIAssistant } from '@/components/ai-assistant/AivyAssistant'
 
 // Export types for backward compatibility
 export type { 

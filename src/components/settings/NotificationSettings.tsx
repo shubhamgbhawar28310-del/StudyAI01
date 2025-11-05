@@ -461,7 +461,7 @@ export function NotificationSettings() {
             Calendar Sync
           </CardTitle>
           <CardDescription>
-            Sync your StudyAI schedule with Google Calendar
+            Sync your Aivy schedule with Google Calendar
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -1,3 +1,3 @@
-import { StudyAIAssistant } from '@/components/ai-assistant/StudyAIAssistant'
+import { AivyAssistant } from '@/components/ai-assistant/AivyAssistant'
 
-export { StudyAIAssistant as AIAssistant }
+export { AivyAssistant as AIAssistant }

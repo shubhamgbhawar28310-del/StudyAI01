@@ -203,7 +203,7 @@ export function ChatHistoryProvider({ children }: { children: ReactNode }) {
 
   // Load chat history from localStorage on mount
   useEffect(() => {
-    const savedChatHistory = localStorage.getItem('studyAI-chatHistory')
+    const savedChatHistory = localStorage.getItem('Aivy-chatHistory')
     if (savedChatHistory) {
       try {
         const parsedHistory = JSON.parse(savedChatHistory)
@@ -230,7 +230,7 @@ export function ChatHistoryProvider({ children }: { children: ReactNode }) {
       sessions: state.sessions,
       currentSessionId: state.currentSessionId
     }
-    localStorage.setItem('studyAI-chatHistory', JSON.stringify(dataToSave))
+    localStorage.setItem('Aivy-chatHistory', JSON.stringify(dataToSave))
   }, [state.sessions, state.currentSessionId])
 
   // Session operations

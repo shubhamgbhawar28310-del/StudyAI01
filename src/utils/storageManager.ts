@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'studyai-chat-sessions';
+const STORAGE_KEY = 'Aivy-chat-sessions';
 const MAX_SESSIONS = 10;
 const STORAGE_WARNING_THRESHOLD = 0.8; // 80% of quota
 const MAX_STRING_SIZE = 4500000; // ~4.5MB (leaving some buffer from 5MB)

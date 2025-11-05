@@ -122,7 +122,7 @@ export function DashboardSidebar({ activeTab, setActiveTab }: DashboardSidebarPr
                   "font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent transition-all",
                   isCollapsed && "hidden"
                 )}>
-                  StudyAI
+                  Aivy
                 </h2>
               </div>
               {!isCollapsed && (

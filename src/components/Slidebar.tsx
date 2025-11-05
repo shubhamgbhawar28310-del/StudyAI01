@@ -64,11 +64,9 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             animate={{ opacity: 1 }}
             className="flex items-center gap-3"
           >
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" /> {/* Changed from GraduationCap to Bot */}
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              StudyAI
+            <img src="/aivyapp1.png" alt="Aivy Logo" className="w-[32px] h-[32px] object-contain" />
+            <span className="text-[20px] font-bold text-gray-900 dark:text-white leading-none">
+              Aivy
             </span>
           </motion.div>
         )}

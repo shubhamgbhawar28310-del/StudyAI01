@@ -1,9 +1,11 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { useStudyPlanner } from '@/contexts/StudyPlannerContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { fetchDashboardStats, DashboardStats } from '@/services/dashboardStatsService'
 import { 
   TrendingUp, 
   Target, 
@@ -24,21 +26,42 @@ interface ProgressTrackerProps {
 
 export function ProgressTracker({ compactMode = false, showHeader = true }: ProgressTrackerProps) {
   const { state } = useStudyPlanner()
+  const { user } = useAuth()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Calculate statistics with safe fallbacks
-  const completionRate = state.userStats?.totalTasks > 0 
-    ? (state.userStats.completedTasks / state.userStats.totalTasks) * 100 
-    : 0
+  // Fetch real stats from Supabase
+  useEffect(() => {
+    async function loadStats() {
+      if (!user?.id) {
+        console.log('ProgressTracker: No user ID available')
+        return
+      }
+      
+      console.log('ProgressTracker: Fetching stats for user:', user.id)
+      setIsLoading(true)
+      const fetchedStats = await fetchDashboardStats(user.id)
+      console.log('ProgressTracker: Received stats:', fetchedStats)
+      setStats(fetchedStats)
+      setIsLoading(false)
+    }
+
+    loadStats()
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(loadStats, 30000)
+    return () => clearInterval(interval)
+  }, [user?.id])
+
+  // Calculate statistics with real data
+  const completionRate = stats?.completionRate || 0
 
   const averageTaskProgress = state.tasks?.length > 0
     ? state.tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / state.tasks.length
     : 0
 
   const totalPomodoroSessions = state.pomodoroSessions?.filter(s => s.completed).length || 0
-  const todaysSessions = state.pomodoroSessions?.filter(s => {
-    const today = new Date().toDateString()
-    return new Date(s.startTime).toDateString() === today && s.completed
-  }).length || 0
+  const todaysSessions = stats?.sessionsToday || 0
 
   const flashcardAccuracy = state.flashcards?.length > 0
     ? state.flashcards
@@ -82,7 +105,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
       title: 'Task Master',
       description: 'Completed 10 tasks',
       icon: Target,
-      unlocked: (state.userStats?.completedTasks || 0) >= 10,
+      unlocked: (stats?.completedTasks || 0) >= 10,
       color: 'text-green-500'
     },
     {
@@ -106,7 +129,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
       title: 'Streak Keeper',
       description: '7-day study streak',
       icon: Flame,
-      unlocked: (state.userStats?.currentStreak || 0) >= 7,
+      unlocked: (stats?.currentStreak || 0) >= 7,
       color: 'text-orange-500'
     },
     {
@@ -114,12 +137,24 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
       title: 'Level Up',
       description: 'Reached level 5',
       icon: Star,
-      unlocked: (state.userStats?.level || 0) >= 5,
+      unlocked: (stats?.level || 0) >= 5,
       color: 'text-yellow-500'
     }
   ]
 
   const unlockedAchievements = achievements.filter(a => a.unlocked)
+
+  // Show loading state
+  if (isLoading && !stats) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (compactMode) {
     return (
@@ -154,7 +189,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
               <Star className="h-5 w-5 text-yellow-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Level</p>
-                <p className="text-2xl font-bold">{state.userStats?.level || 1}</p>
+                <p className="text-2xl font-bold">{stats?.level || 1}</p>
               </div>
             </div>
           </CardContent>
@@ -166,7 +201,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
               <Flame className="h-5 w-5 text-orange-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Streak</p>
-                <p className="text-2xl font-bold">{state.userStats?.currentStreak || 0}</p>
+                <p className="text-2xl font-bold">{stats?.currentStreak || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -198,7 +233,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
                   <p className="text-sm text-muted-foreground">Task Completion</p>
                   <p className="text-3xl font-bold">{Math.round(completionRate)}%</p>
                   <p className="text-xs text-muted-foreground">
-                    {state.userStats?.completedTasks || 0} of {state.userStats?.totalTasks || 0} tasks
+                    {stats?.completedTasks || 0} of {stats?.totalTasks || 0} tasks
                   </p>
                 </div>
                 <CheckSquare className="h-8 w-8 text-green-500" />
@@ -217,20 +252,20 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Study Time</p>
-                  <p className="text-3xl font-bold">{Math.floor((state.userStats?.totalStudyTime || 0) / 60)}h</p>
+                  <p className="text-sm text-muted-foreground">Study Sessions</p>
+                  <p className="text-3xl font-bold">{todaysSessions}</p>
                   <p className="text-xs text-muted-foreground">
-                    {todaysSessions} sessions today
+                    sessions today
                   </p>
                 </div>
                 <Clock className="h-8 w-8 text-blue-500" />
               </div>
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Daily Goal: 2h</span>
-                  <span>{Math.round((todaysSessions * 25) / 120 * 100)}%</span>
+                  <span>Daily Goal: 4 sessions</span>
+                  <span>{Math.round((todaysSessions / 4) * 100)}%</span>
                 </div>
-                <Progress value={(todaysSessions * 25) / 120 * 100} className="mt-1" />
+                <Progress value={(todaysSessions / 4) * 100} className="mt-1" />
               </div>
             </CardContent>
           </Card>
@@ -246,9 +281,9 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Level & XP</p>
-                  <p className="text-3xl font-bold">Level {state.userStats?.level || 1}</p>
+                  <p className="text-3xl font-bold">Level {stats?.level || 1}</p>
                   <p className="text-xs text-muted-foreground">
-                    {state.userStats?.xp || 0} XP
+                    {stats?.xp || 0} XP
                   </p>
                 </div>
                 <Star className="h-8 w-8 text-yellow-500" />
@@ -256,10 +291,10 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Next Level</span>
-                  <span>{state.userStats?.xpToNextLevel || 100} XP to go</span>
+                  <span>{100 - ((stats?.xp || 0) % 100)} XP to go</span>
                 </div>
                 <Progress 
-                  value={((state.userStats?.xp || 0) % 100)} 
+                  value={((stats?.xp || 0) % 100)} 
                   className="mt-1" 
                 />
               </div>
@@ -277,7 +312,7 @@ export function ProgressTracker({ compactMode = false, showHeader = true }: Prog
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Study Streak</p>
-                  <p className="text-3xl font-bold">{state.userStats?.currentStreak || 0}</p>
+                  <p className="text-3xl font-bold">{stats?.currentStreak || 0}</p>
                   <p className="text-xs text-muted-foreground">
                     days in a row
                   </p>

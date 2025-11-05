@@ -90,7 +90,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
       // Show success toast
       toast({
-        title: '✅ Got it! Thanks for helping improve StudyAI',
+        title: '✅ Got it! Thanks for helping improve Aivy',
         description: 'Your feedback means the world to us 💙',
         duration: 5000
       })
@@ -159,7 +159,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       We'd Love Your Thoughts 💙
                     </h2>
                     <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-md mx-auto px-2">
-                      Hey! Thanks for using StudyAI. We're constantly improving, and your feedback makes a <span className="font-semibold text-indigo-600 dark:text-indigo-400">huge difference</span>. 
+                      Hey! Thanks for using Aivy. We're constantly improving, and your feedback makes a <span className="font-semibold text-indigo-600 dark:text-indigo-400">huge difference</span>. 
                       This project is built for students, by someone who's been there. Let's build something amazing together.
                     </p>
                   </div>
@@ -236,7 +236,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       <textarea
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Tell us what's working or what's not... Don't hold back — every note helps us make StudyAI smarter."
+                        placeholder="Tell us what's working or what's not... Don't hold back — every note helps us make Aivy smarter."
                         rows={5}
                         className="w-full px-4 py-3 bg-white/90 dark:bg-gray-900/60 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:focus:border-purple-500 resize-none text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all duration-200 shadow-sm hover:shadow-md"
                       />
@@ -347,7 +347,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       Thank You! 💙
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                      Your thoughts mean a lot. We're on it and will keep making StudyAI better for you!
+                      Your thoughts mean a lot. We're on it and will keep making Aivy better for you!
                     </p>
                   </motion.div>
 

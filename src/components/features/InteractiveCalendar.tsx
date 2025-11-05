@@ -1,4 +1,4 @@
-// Google Calendar-Style Interactive Planner for StudyAI
+// Google Calendar-Style Interactive Planner for Aivy
 // Full drag-and-drop, resize, and click-to-create functionality
 
 import { useState, useCallback, useMemo } from 'react';

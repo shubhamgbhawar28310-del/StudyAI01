@@ -47,18 +47,10 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <a href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity duration-200">
-              <GraduationCap className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent" style={{ stroke: 'url(#gradient)' }} />
-              <svg width="0" height="0">
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgb(37, 99, 235)" />
-                    <stop offset="100%" stopColor="rgb(147, 51, 234)" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                StudyAI
+            <a href="/" className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity duration-200">
+              <img src="/aivyapp1.png" alt="Aivy Logo" className="h-[38px] w-[38px] object-contain" />
+              <span className="text-[24px] font-bold text-gray-900 dark:text-white leading-none">
+                Aivy
               </span>
             </a>
           </div>

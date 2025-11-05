@@ -3,7 +3,7 @@
  * Handles storage of large files (up to 50MB+) that exceed localStorage limits
  */
 
-const DB_NAME = 'StudyAI_FileStorage';
+const DB_NAME = 'Aivy_FileStorage';
 const DB_VERSION = 1;
 const STORE_NAME = 'materials';
 

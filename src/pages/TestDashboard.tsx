@@ -6,14 +6,14 @@ export default function TestDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
   
   return (
-    <ThemeProvider defaultTheme="light" storageKey="studyai-theme">
+    <ThemeProvider defaultTheme="light" storageKey="Aivy-theme">
       <div className="flex h-screen bg-gray-100">
         <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         
         <main className="flex-1 overflow-auto bg-white">
           <div className="p-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              StudyAI Dashboard Test
+              Aivy Dashboard Test
             </h1>
             <p className="text-lg text-gray-600 mb-8">
               If you can see this, the app is working! 🎉

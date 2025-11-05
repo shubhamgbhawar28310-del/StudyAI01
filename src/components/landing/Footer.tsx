@@ -9,18 +9,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo and Description */}
           <div className="md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <GraduationCap className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent" style={{ stroke: 'url(#footer-gradient)' }} />
-              <svg width="0" height="0">
-                <defs>
-                  <linearGradient id="footer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgb(37, 99, 235)" />
-                    <stop offset="100%" stopColor="rgb(147, 51, 234)" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                StudyAI
+            <div className="flex items-center space-x-2.5 mb-4">
+              <img src="/aivyapp1.png" alt="Aivy Logo" className="h-[38px] w-[38px] object-contain" />
+              <span className="text-[24px] font-bold text-white leading-none">
+                Aivy
               </span>
             </div>
             <p className="text-background/70 mb-4 max-w-md">
@@ -115,16 +107,16 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-background/20 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
           <p className="text-background/70 text-sm">
-            © {currentYear} StudyAI. All rights reserved.
+            © {currentYear} Aivy. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 sm:mt-0">
-            <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
+            <a href="/privacy-policy" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Privacy Policy
             </a>
-            <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
+            <a href="/terms-of-service" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Terms of Service
             </a>
-            <a href="#" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
+            <a href="/cookie-policy" className="text-background/70 hover:text-background text-sm transition-colors duration-200">
               Cookie Policy
             </a>
           </div>

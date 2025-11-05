@@ -85,27 +85,30 @@ const FeaturesSection = () => {
               AI Assistant
             </div>
             <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-6">
-              Your AI tutor, connected to your notes
+              Your AI Tutor — Smart, Fast, and Always Ready
             </h2>
-            <p className="text-lg text-gray-600 mb-8 leading-relaxed">Ask anything—from explaining tough concepts to writing essays. The AI knows your materials, so it gives context-aware answers. Like having a tutor who's already read everything you uploaded.</p>
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">Ask anything — from understanding tough topics to writing essays.
+Aivy’s assistant gives clear, reliable answers in seconds — powered by advanced AI.
+You can even share parts of your notes or questions directly in chat for more personalized help.
+Like having a 24/7 tutor who never gets tired.</p>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Explain concepts using your uploaded notes</span>
+                <span className="text-foreground font-medium">Explain any concept clearly and simply</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Generate practice problems and essay outlines</span>
+                <span className="text-foreground font-medium">Generate summaries, examples, or essays instantly</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
                   <span className="w-2 h-2 bg-white rounded-full"></span>
                 </div>
-                <span className="text-foreground font-medium">Context-aware learning—AI knows your materials</span>
+                <span className="text-foreground font-medium">Share your own text or notes for more tailored answers</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 ai-gradient rounded-full flex items-center justify-center">
@@ -157,7 +160,7 @@ const FeaturesSection = () => {
             One workspace for studying smarter
           </h2>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Stop juggling Google Drive, Notion, and calendar apps. StudyAI unifies your notes, schedule, 
+            Stop juggling Google Drive, Notion, and calendar apps. Aivy unifies your notes, schedule, 
             AI tutor, and progress tracking in one seamless platform.
           </p>
         </div>

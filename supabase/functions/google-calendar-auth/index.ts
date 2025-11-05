@@ -102,6 +102,24 @@ serve(async (req) => {
       throw updateError;
     }
 
+    // Trigger batch sync of existing events
+    console.log('🔄 Triggering batch sync for existing events...');
+    try {
+      const batchSyncResponse = await supabase.functions.invoke('google-calendar-batch-sync', {
+        body: { userId }
+      });
+      
+      if (batchSyncResponse.error) {
+        console.error('Batch sync error:', batchSyncResponse.error);
+      } else {
+        console.log('✅ Batch sync initiated:', batchSyncResponse.data);
+      }
+    } catch (batchError) {
+      console.error('Error invoking batch sync:', batchError);
+      // Don't fail the OAuth flow if batch sync fails
+      // User can manually trigger sync later
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -1,4 +1,4 @@
-// Notification Service for StudyAI
+// Notification Service for Aivy
 // Handles browser notifications with permission management
 
 export class NotificationService {

@@ -12,7 +12,7 @@ export function FileTest({ onFileTest }: FileTestProps) {
     const mockFile: Attachment = {
       name: 'test-file.txt',
       type: 'text/plain',
-      content: btoa('This is a test file for verifying file upload and preview functionality in StudyAI.'),
+      content: btoa('This is a test file for verifying file upload and preview functionality in Aivy.'),
       extractedText: 'File: test-file.txt (text/plain)'
     };
     setTestFile(mockFile);

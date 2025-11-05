@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (result.success) {
         // Clear any local storage data
-        localStorage.removeItem('studyai-theme');
+        localStorage.removeItem('Aivy-theme');
         
         // Redirect to landing page
         navigate('/', { replace: true });

@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
             className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to StudyAI</span>
+            <span className="font-medium">Back to Aivy</span>
           </Link>
         </div>
       </header>
@@ -34,14 +34,14 @@ export default function PrivacyPolicy() {
           {/* Introduction */}
           <section>
             <p className="text-gray-700 leading-relaxed">
-              StudyAI ("we", "our", or "us") operates the website{' '}
+              Aivy ("we", "our", or "us") operates the website{' '}
               <a 
-                href="https://studyai0.vercel.app" 
+                href="https://aivyapp.vercel.app" 
                 className="text-blue-600 hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                https://studyai0.vercel.app
+                https://aivyapp.vercel.app
               </a>{' '}
               (the "Service"). This Privacy Policy explains how we collect, use, and protect 
               information when you use our platform and its features such as Study Planner, 
@@ -72,14 +72,14 @@ export default function PrivacyPolicy() {
                 <span className="text-blue-600 mt-1">•</span>
                 <div>
                   <strong className="text-gray-900">Usage Data:</strong>
-                  <span className="text-gray-700"> Pages visited, session duration, and interactions with StudyAI tools (used only to improve performance).</span>
+                  <span className="text-gray-700"> Pages visited, session duration, and interactions with Aivy tools (used only to improve performance).</span>
                 </div>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 mt-1">•</span>
                 <div>
                   <strong className="text-gray-900">Calendar Data (if you enable Google Calendar Sync):</strong>
-                  <span className="text-gray-700"> When you connect your Google account, StudyAI requests permission to view and create events in your Google Calendar to synchronize your study sessions. We never access, store, or share any calendar data outside your account.</span>
+                  <span className="text-gray-700"> When you connect your Google account, Aivy requests permission to view and create events in your Google Calendar to synchronize your study sessions. We never access, store, or share any calendar data outside your account.</span>
                 </div>
               </li>
             </ul>
@@ -99,7 +99,7 @@ export default function PrivacyPolicy() {
             <ul className="space-y-2 ml-4">
               <li className="flex items-start gap-2">
                 <span className="text-purple-600 mt-1">•</span>
-                <span className="text-gray-700">Provide and maintain StudyAI's features.</span>
+                <span className="text-gray-700">Provide and maintain Aivy's features.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-600 mt-1">•</span>
@@ -142,7 +142,7 @@ export default function PrivacyPolicy() {
           <section className="bg-blue-50 rounded-xl p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Google API Services Disclosure</h2>
             <p className="text-gray-700 leading-relaxed">
-              StudyAI's use and transfer to any other app of information received from Google APIs 
+              Aivy's use and transfer to any other app of information received from Google APIs 
               will adhere to{' '}
               <a 
                 href="https://developers.google.com/terms/api-services-user-data-policy" 
@@ -163,7 +163,7 @@ export default function PrivacyPolicy() {
             <ul className="space-y-2 ml-4">
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 mt-1">•</span>
-                <span className="text-gray-700">Disconnect Google Calendar access anytime from your StudyAI account settings.</span>
+                <span className="text-gray-700">Disconnect Google Calendar access anytime from your Aivy account settings.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 mt-1">•</span>
@@ -210,12 +210,12 @@ export default function PrivacyPolicy() {
               <p className="text-gray-900">
                 <strong>Website:</strong>{' '}
                 <a 
-                  href="https://studyai0.vercel.app" 
+                  href="https://aivyapp.vercel.app" 
                   className="text-blue-600 hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  https://studyai0.vercel.app
+                  https://aivyapp.vercel.app
                 </a>
               </p>
             </div>
@@ -224,7 +224,7 @@ export default function PrivacyPolicy() {
 
         {/* Footer */}
         <div className="text-center mt-12 text-gray-600">
-          <p>© 2025 StudyAI. All rights reserved.</p>
+          <p>© 2025 Aivy. All rights reserved.</p>
         </div>
       </main>
     </div>

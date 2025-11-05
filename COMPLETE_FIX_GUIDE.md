@@ -1,99 +1,111 @@
-# 🔧 COMPLETE FIX - Task Detail View
+# Complete Fix for Google Calendar Retroactive Sync
 
-## 🔴 The Real Problem
+## Quick Fix (Do This First)
 
-Your error is caused by a **type mismatch**:
+### Option A: Using SQL (Fastest)
 
-- Your `tasks` table has `id` as **UUID** type
-- But `materials.task_id` and `task_notes.task_id` were created as **TEXT** type
-- When the trigger tries to match them, PostgreSQL fails
+1. **Open Supabase SQL Editor**
 
-## ✅ The Solution (2 Steps)
+2. **Run this SQL:**
+```sql
+-- Copy and paste from MANUAL_QUEUE_ALL_EVENTS.sql
+```
 
-### Step 1: Fix the Type Mismatch
+3. **Then invoke the worker:**
+   - Go to Supabase Dashboard
+   - Edge Functions → `google-calendar-worker`
+   - Click "Invoke"
 
-1. Open file: **`FIX_TASK_ID_MISMATCH.sql`**
-2. Copy everything (`Ctrl+A`, `Ctrl+C`)
-3. Go to **Supabase Dashboard** → **SQL Editor**
-4. Paste (`Ctrl+V`)
-5. Click **RUN**
-6. ✅ Should see: "🎉 SUCCESS! All types match now!"
+4. **Check Google Calendar** - events should appear!
 
-### Step 2: Complete the Setup
+### Option B: Using the Sync Button
 
-1. Open file: **`FINAL_WORKING_SQL.sql`**
-2. Copy everything (`Ctrl+A`, `Ctrl+C`)
-3. Go to **Supabase Dashboard** → **SQL Editor**
-4. Paste (`Ctrl+V`)
-5. Click **RUN**
-6. ✅ Should see: "🎉 SUCCESS! Everything is set up correctly!"
-
----
-
-## 🧪 Test It
-
+1. **Deploy the edge function:**
 ```bash
-npm run dev
+supabase functions deploy google-calendar-batch-sync
 ```
 
-Click any task → Detail modal opens! ✅
+2. **Click "Sync to Calendar"** in Settings
 
----
+3. **Check browser console** for logs
 
-## 📊 What Happened
+## Why It Wasn't Working
 
-### Before (ERROR):
+The sync system has 3 parts:
+1. **Database Triggers** - Auto-queue NEW events
+2. **Batch Sync Function** - Queue OLD events
+3. **Worker Function** - Process the queue
+
+Your issue: The batch-sync function wasn't deployed, so old events never got queued.
+
+## Permanent Fix
+
+Deploy all edge functions:
+```bash
+cd supabase/functions
+supabase functions deploy google-calendar-auth
+supabase functions deploy google-calendar-sync  
+supabase functions deploy google-calendar-worker
+supabase functions deploy google-calendar-batch-sync
+```
+
+## Verify It's Working
+
+### Test 1: Check Database
 ```sql
-tasks.id          → UUID
-materials.task_id → TEXT  ❌ MISMATCH!
-task_notes.task_id → TEXT ❌ MISMATCH!
+-- Should show columns exist
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'schedule_events'
+AND column_name IN ('synced_to_google', 'google_event_id');
 ```
 
-### After (FIXED):
+### Test 2: Check Functions
+```bash
+supabase functions list
+# Should show all 4 functions
+```
+
+### Test 3: Check Sync
+1. Create a test event in study planner
+2. Click "Sync to Calendar"
+3. Check Google Calendar
+
+## Troubleshooting
+
+### "Function not found" error
+```bash
+supabase functions deploy google-calendar-batch-sync
+```
+
+### "Column does not exist" error
 ```sql
-tasks.id          → UUID
-materials.task_id → UUID  ✅ MATCH!
-task_notes.task_id → UUID ✅ MATCH!
+-- Run ADD_SYNC_COLUMNS.sql
 ```
 
----
-
-## 🔍 Why This Happened
-
-Your `create_user_data_tables.sql` created `tasks` with UUID:
-```sql
-id UUID DEFAULT uuid_generate_v4() PRIMARY KEY
+### Events queued but not syncing
+```bash
+# Manually trigger worker
+supabase functions invoke google-calendar-worker
 ```
 
-But `FINAL_WORKING_SQL.sql` created materials/notes with TEXT:
-```sql
-task_id TEXT
-```
+### Still not working?
+1. Check Supabase Edge Function logs
+2. Check browser console (F12)
+3. Run DEBUG_SYNC_ISSUE.sql
+4. Verify Google OAuth is connected
 
-This mismatch caused the error when the trigger tried to delete related records.
+## Files You Need
 
----
+- ✅ `supabase/functions/google-calendar-batch-sync/index.ts` (created)
+- ✅ `src/components/features/GoogleCalendarSyncButton.tsx` (updated)
+- ✅ `supabase/functions/google-calendar-auth/index.ts` (updated)
+- ✅ `ADD_SYNC_COLUMNS.sql` (run if columns missing)
+- ✅ `MANUAL_QUEUE_ALL_EVENTS.sql` (quick fix)
 
-## ⚠️ Important Note
+## Success Criteria
 
-After running `FIX_TASK_ID_MISMATCH.sql`, your app code should work correctly because:
-- `crypto.randomUUID()` in JavaScript returns a string like `"550e8400-e29b-41d4-a716-446655440000"`
-- PostgreSQL can convert this string to UUID automatically
-- The database will now store it as proper UUID type
-
----
-
-## 🎯 Quick Summary
-
-1. **Run:** `FIX_TASK_ID_MISMATCH.sql` (fixes type mismatch)
-2. **Run:** `FINAL_WORKING_SQL.sql` (completes setup)
-3. **Test:** Click any task in your app
-4. ✅ **Done!**
-
----
-
-**Files to Run (in order):**
-1. `FIX_TASK_ID_MISMATCH.sql` ⭐
-2. `FINAL_WORKING_SQL.sql` ⭐
-
-**Status:** ✅ TESTED & WORKING
+✅ Old events sync when clicking "Sync to Calendar"
+✅ New events auto-sync via triggers
+✅ No duplicate events
+✅ Toast shows "Queued X events, processed Y events"
+✅ Events appear in Google Calendar with 📚 emoji
