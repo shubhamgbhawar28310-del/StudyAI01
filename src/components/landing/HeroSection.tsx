@@ -28,11 +28,11 @@ const HeroSection = () => {
     ></span>
     {/* Gradient text */}
     <span className="relative bg-gradient-to-r from-blue-500 to-violet-600 bg-clip-text text-transparent animate-gradient-move">
-      You focus on learning.
+      Focus on learning.
     </span>
   </span>{" "}
   <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-    Aivy handles the rest.
+    Let Aivy handle the rest
   </span>
 </h1>
 
