@@ -265,16 +265,82 @@ export function TaskDetailModal({ isOpen, onClose, taskId }: TaskDetailModalProp
   };
 
   const handleViewFile = async (fileId: string) => {
-    const fileData = await getTaskFileData(fileId);
-    if (fileData) {
-      window.open(fileData, '_blank');
+    try {
+      const base64Data = await getTaskFileData(fileId);
+      if (base64Data) {
+        // Find the file to get its type
+        const file = uploadedFiles.find(f => f.id === fileId);
+        if (!file) {
+          toast({
+            title: 'File Not Found',
+            description: 'Unable to find file information',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Convert base64 to blob
+        const byteCharacters = atob(base64Data.split(',')[1] || base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: file.file_type });
+
+        const url = URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        if (!newWindow) {
+          toast({
+            title: 'Popup Blocked',
+            description: 'Please allow popups to preview files',
+            variant: 'destructive'
+          });
+        }
+        
+        // Clean up URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } else {
+        toast({
+          title: 'File Not Found',
+          description: 'Unable to load file',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      toast({
+        title: 'View Failed',
+        description: 'Failed to open file',
+        variant: 'destructive'
+      });
     }
   };
 
   const handleDownloadFile = async (fileId: string, fileName: string) => {
-    const fileData = await getTaskFileData(fileId);
-    if (fileData) {
-      downloadFile(fileData, fileName);
+    try {
+      const blob = await getTaskFileData(fileId);
+      if (blob) {
+        downloadFile(blob, fileName);
+        toast({
+          title: 'Download Started',
+          description: `Downloading ${fileName}`,
+        });
+      } else {
+        toast({
+          title: 'File Not Found',
+          description: 'Unable to load file',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download file',
+        variant: 'destructive'
+      });
     }
   };
 

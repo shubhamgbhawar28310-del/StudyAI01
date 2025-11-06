@@ -103,7 +103,6 @@ class DataSyncService {
 
       const [
         tasksResult,
-        materialsResult,
         flashcardsResult,
         flashcardDecksResult,
         pomodoroSessionsResult,
@@ -113,7 +112,6 @@ class DataSyncService {
         remindersResult,
       ] = await Promise.all([
         supabase.from('tasks').select('*').eq('user_id', userId),
-        supabase.from('materials').select('*').eq('user_id', userId),
         supabase.from('flashcards').select('*').eq('user_id', userId),
         supabase.from('flashcard_decks').select('*').eq('user_id', userId),
         supabase.from('pomodoro_sessions').select('*').eq('user_id', userId),
@@ -125,9 +123,11 @@ class DataSyncService {
 
       this.setSyncStatus('synced');
 
+      // Materials are stored in localStorage and Supabase Storage, not in database
+      // They will be loaded from localStorage by the StudyPlannerContext
       return {
         tasks: toCamelCase(tasksResult.data || []),
-        materials: toCamelCase(materialsResult.data || []),
+        materials: [], // Materials loaded from localStorage
         flashcards: toCamelCase(flashcardsResult.data || []),
         flashcardDecks: toCamelCase(flashcardDecksResult.data || []),
         pomodoroSessions: toCamelCase(pomodoroSessionsResult.data || []),
@@ -183,24 +183,18 @@ class DataSyncService {
   }
 
   // Materials
+  // NOTE: Materials are stored in Supabase Storage, not in a database table
+  // Metadata is stored in localStorage for fast access
+  // File content is stored in Supabase Storage bucket 'materials'
   async syncMaterial(material: Material, userId: string, operation: 'insert' | 'update' | 'delete') {
     try {
-      this.setSyncStatus('syncing');
-      const materialData = toSnakeCase({ ...material, user_id: userId });
-
-      if (operation === 'delete') {
-        await supabase.from('materials').delete().eq('id', material.id).eq('user_id', userId);
-      } else if (operation === 'insert') {
-        await supabase.from('materials').insert(materialData);
-      } else {
-        await supabase.from('materials').update(materialData).eq('id', material.id).eq('user_id', userId);
-      }
-
-      this.setSyncStatus('synced');
+      // Materials don't sync to database - they're stored in Supabase Storage
+      // This function is kept for compatibility but does nothing
+      console.log('Material sync skipped (stored in Supabase Storage):', material.id, operation);
+      return;
     } catch (error) {
-      console.error('Error syncing material:', error);
-      this.setSyncStatus('error');
-      throw error;
+      console.error('Error in syncMaterial:', error);
+      // Don't throw error to prevent breaking the app
     }
   }
 

@@ -89,10 +89,13 @@ export interface Material {
   description?: string
   subject?: string
   type: 'note' | 'pdf' | 'image' | 'document' | 'presentation' | 'link' | 'other'
-  content?: string
+  content?: string // Deprecated: kept for backward compatibility with IndexedDB
   fileName?: string
   fileSize?: number
   filePath?: string // Path to file in Supabase Storage
+  supabaseUrl?: string // Public URL from Supabase Storage
+  uploadStatus?: 'uploading' | 'uploaded' | 'error' | 'pending'
+  uploadProgress?: number
   tags?: string[]
   taskIds?: string[] // Tasks this material is attached to
   createdAt: string
@@ -639,7 +642,7 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
       // Clear data when user logs out
       dispatch({ type: 'LOAD_DATA', payload: initialState })
     }
-  }, [user])
+  }, [user?.id]) // Only trigger when user ID changes, not on every auth state change
 
   const loadUserData = async () => {
     if (!user) return
@@ -647,18 +650,34 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true })
       
+      // Load from localStorage first to get any existing data
+      const savedData = await safeStorage.getItem('studyPlannerData')
+      console.log('Existing localStorage data - materials:', savedData?.materials?.length || 0)
+      
       // Initialize user data if this is a new user
       await dataSyncService.initializeUserData(user.id)
       
       // Fetch all user data from Supabase
       const userData = await dataSyncService.fetchAllUserData(user.id)
       
-      dispatch({ type: 'LOAD_DATA', payload: userData })
+      // Use materials from localStorage (they're not in Supabase database)
+      const materialsFromStorage = savedData?.materials || []
+      
+      console.log('Loading user data - materials from localStorage:', materialsFromStorage.length)
+      
+      // Merge Supabase data with localStorage materials
+      dispatch({ type: 'LOAD_DATA', payload: {
+        ...userData,
+        materials: materialsFromStorage
+      }})
+      
+      console.log('User data loaded - materials count:', materialsFromStorage.length)
     } catch (error) {
       console.error('Failed to load user data:', error)
       // Fallback to safeStorage if Supabase fails
       const savedData = await safeStorage.getItem('studyPlannerData')
       if (savedData) {
+        console.log('Loading from localStorage fallback - materials:', savedData.materials?.length || 0)
         dispatch({ type: 'LOAD_DATA', payload: savedData })
       }
     } finally {
@@ -668,7 +687,8 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
 
   // Save data to safeStorage as backup whenever state changes
   useEffect(() => {
-    if (user) {
+    // Don't save while loading to prevent overwriting with empty state
+    if (user && !state.isLoading) {
       const dataToSave = {
         tasks: state.tasks,
         flashcards: state.flashcards,
@@ -679,9 +699,10 @@ export function StudyPlannerProvider({ children }: { children: ReactNode }) {
         userStats: state.userStats,
         settings: state.settings
       }
+      console.log('Saving to localStorage - materials count:', state.materials.length)
       safeStorage.setItem('studyPlannerData', dataToSave).catch(console.error)
     }
-  }, [user, state.tasks, state.flashcards, state.flashcardDecks, state.pomodoroSessions, state.scheduleEvents, state.materials, state.userStats, state.settings])
+  }, [user, state.isLoading, state.tasks, state.flashcards, state.flashcardDecks, state.pomodoroSessions, state.scheduleEvents, state.materials, state.userStats, state.settings])
 
   // Sync user stats to Supabase when they change
   useEffect(() => {

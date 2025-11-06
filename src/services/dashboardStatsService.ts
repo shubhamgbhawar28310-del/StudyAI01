@@ -88,17 +88,20 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
     // Fetch streak (consecutive days with at least 1 session)
     const streak = await calculateStreak(userId);
 
-    // Fetch materials count
-    const { count: materialsCount, error: materialsError } = await supabase
-      .from('materials')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    if (materialsError) {
-      console.warn('materials table error:', materialsError);
+    // Materials are stored in localStorage, not in Supabase database
+    // Get count from localStorage instead
+    let materialsCount = 0;
+    try {
+      const savedData = localStorage.getItem('studyPlannerData');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        materialsCount = parsed.materials?.length || 0;
+      }
+    } catch (error) {
+      console.warn('Error reading materials from localStorage:', error);
     }
 
-    console.log('Materials count:', materialsCount || 0);
+    console.log('Materials count:', materialsCount);
 
     const finalStats = {
       completionRate,
