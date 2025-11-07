@@ -1,4 +1,4 @@
-# StudyAI - AI-Powered Study Assistant
+# Aivy - AI-Powered Study Assistant
 
 A comprehensive study management platform with AI assistance, featuring task management, flashcards, pomodoro timer, and more.
 
