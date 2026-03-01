@@ -2,13 +2,13 @@
 // Runs every 5 minutes to sync events to Google Calendar
 
 const SUPABASE_URL = 'https://crdqpioymuvnzhtgrenj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyZHFwaW95bXV2bnpodGdyZW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4Mzc2NjQsImV4cCI6MjA3MzQxMzY2NH0.rv55zUVAkCCsZG0gzvOGHL3R8KzHpymaORrx56OnEC0';
+const SUPABASE_ANON_KEY = 'your-supabase-anon-key-here';
 
 async function triggerSync() {
   try {
     const timestamp = new Date().toISOString();
     console.log(`\n[${timestamp}] 🔄 Triggering Google Calendar sync...`);
-    
+
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/google-calendar-worker`,
       {
@@ -19,13 +19,13 @@ async function triggerSync() {
         }
       }
     );
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    
+
     if (data.success) {
       console.log(`[${timestamp}] ✅ Sync completed successfully!`);
       console.log(`   - Processed: ${data.results?.processed || 0} events`);

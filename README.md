@@ -56,35 +56,20 @@ A comprehensive study management platform with AI assistance, featuring task man
 
 4. **Set up Supabase database**
    
-   Follow the instructions in `setup-database.md` to create the required tables.
+   Aivy requires a PostgreSQL database to function properly.
+   
+   1. Access the [Supabase Dashboard](https://app.supabase.com) and create/select your project.
+   2. Navigate to the **SQL Editor**.
+   3. Run the migrations sequentially:
+      - `supabase/migrations/create_user_data_tables.sql`
+      - `supabase/migrations/create_user_preferences_table.sql`
+   4. Verify that tables like `tasks`, `materials`, `flashcards`, etc. were created.
+   5. Configure Authentication in the Supabase dashboard to enable email/password signups.
 
 5. **Start the development server**
    ```bash
    npm run dev
    ```
-
-## 🗄️ Database Setup
-
-**IMPORTANT**: Before using the app, you must set up the Supabase database tables.
-
-See detailed instructions in:
-- **Quick Setup**: `setup-database.md`
-- **Full Documentation**: `AUTHENTICATION_AND_SYNC_SETUP.md`
-
-### Quick Steps:
-1. Go to your Supabase project dashboard
-2. Open SQL Editor
-3. Run the migrations from `supabase/migrations/`
-4. Verify tables are created
-
-## 🔑 Authentication
-
-The app supports two authentication methods:
-
-1. **Email/Password** - Traditional signup and login
-2. **Google OAuth** - One-click sign-in with Google
-
-All user data is automatically synced to their account and persists across sessions.
 
 ## 📱 Usage
 
@@ -93,15 +78,6 @@ All user data is automatically synced to their account and persists across sessi
 3. **Dashboard** - Manage tasks, materials, and study sessions
 4. **AI Assistant** - Get study help and generate flashcards
 5. **Track Progress** - Monitor your achievements and stats
-
-## 🔄 Data Sync
-
-The app features automatic data synchronization:
-
-- ✅ **Auto-save**: Changes sync immediately to the cloud
-- ✅ **Sync Indicator**: Visual feedback in top-right corner
-- ✅ **Offline Mode**: Works offline, syncs when back online
-- ✅ **Data Persistence**: Never lose your data on refresh
 
 ## 🏗️ Project Structure
 
@@ -127,21 +103,6 @@ studyai/
 - Secure authentication with Supabase Auth
 - Environment variables for sensitive data
 
-## 🐛 Troubleshooting
-
-See `AUTHENTICATION_AND_SYNC_SETUP.md` for detailed troubleshooting guide.
-
-Common issues:
-- **Data not syncing**: Check Supabase credentials and migrations
-- **Login issues**: Verify Supabase Auth is configured
-- **Sync errors**: Check network connection and browser console
-
-## 📚 Documentation
-
-- `AUTHENTICATION_AND_SYNC_SETUP.md` - Complete auth and sync guide
-- `setup-database.md` - Quick database setup instructions
-- `QUICK_START.md` - Getting started guide
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -154,10 +115,3 @@ Contributions are welcome! Please follow these steps:
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Built with React and Vite
-- UI components from shadcn/ui
-- Authentication and database by Supabase
-- AI powered by Google Gemini

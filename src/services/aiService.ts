@@ -3,7 +3,7 @@ import { ChatMessage, StudyPlan, Flashcard, Notes, Author, Attachment, Quiz, Con
 import { documentAPI } from '@/services/api';
 
 // AI Service using Google Gemini - Fixed configuration
-const apiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY || 'AIzaSyABaiEo9-auIArdwzwvlYgVLeg-c5gIdVc';
+const apiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY ;
 const ai = new GoogleGenAI({ apiKey });
 const model = 'gemini-2.0-flash';
 

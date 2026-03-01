@@ -7,7 +7,7 @@ $response = Invoke-RestMethod `
   -Uri "https://crdqpioymuvnzhtgrenj.supabase.co/functions/v1/google-calendar-worker" `
   -Method POST `
   -Headers @{
-    "Authorization" = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyZHFwaW95bXV2bnpodGdyZW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4Mzc2NjQsImV4cCI6MjA3MzQxMzY2NH0.rv55zUVAkCCsZG0gzvOGHL3R8KzHpymaORrx56OnEC0"
+    "Authorization" = "Bearer your-supabase-anon-key-here"
     "Content-Type" = "application/json"
   }
 
